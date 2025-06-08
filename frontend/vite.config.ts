@@ -6,6 +6,7 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
   plugins: [vue(), tailwindcss()],
+  base: './', // assets relative path
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
