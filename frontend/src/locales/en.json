@@ -1,0 +1,40 @@
+{
+  "new_dialogue": "New dialogue {n}",
+  "no_dialogue_selected": "No dialogue selected.",
+  "bot_typing": "...",
+  "enter_message": "Enter a message...",
+  "stop": "Stop",
+
+  "copied": "Copied",
+
+  "dialog.delete_title": "Are you sure?",
+  "dialog.delete_description_part1": "This action cannot be undone. Dialogue",
+  "dialog.delete_description_part2": "will be deleted.",
+  "dialog.cancel_button": "Cancel",
+  "dialog.confirm_button": "Delete",
+
+  "dialogue_list.title": "Dialogues",
+  "dialogue_list.create_button": "Create dialogue",
+  "dialogue_list.menu.delete": "Delete",
+  "dialogue_list.menu.rename": "Rename",
+  "all-dialog" : "All dialogues will be deleted",
+
+  "rename_dialog.title": "Rename dialogue",
+  "rename_dialog.description": "Enter a new name for the dialogue.",
+  "rename_dialog.placeholder": "New name...",
+  "rename_dialog.cancel": "Cancel",
+  "rename_dialog.confirm": "Save",
+
+  "settings.button": "Settings",
+  "settings.title": "Connection Settings",
+  "settings.api_key_label": "API key for {provider}",
+  "settings.api_key_placeholder": "Enter key...",
+  "settings.select_provider": "Select provider",
+  "settings.select_model": "Select model",
+  "settings.no_models": "No models found.",
+  "settings.save": "Save",
+  "fill_required_fields": "Please select a provider and a model.",
+  "api_key_required": "API key is required.",
+  "settings.invalid_api_key": "API key is invalid or expired.",
+  "settings.saving": "Saving..."
+}

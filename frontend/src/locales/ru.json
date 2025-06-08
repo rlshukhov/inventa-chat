@@ -1,0 +1,42 @@
+{
+  "new_dialogue": "Новый диалог {n}",
+  "no_dialogue_selected": "Нет выбранного диалога.",
+  "bot_typing": "...",
+  "enter_message": "Введите сообщение...",
+  "stop": "Стоп",
+
+  "copied": "Copied",
+
+  "dialog.delete_title": "Вы уверены?",
+  "dialog.delete_description_part1": "Это действие нельзя отменить. Диалог",
+  "dialog.delete_description_part2": "будет удалён.",
+  "dialog.cancel_button": "Отмена",
+  "dialog.confirm_button": "Удалить",
+  "all-dialog" : "Все диалоги будут удалены",
+
+
+  "dialogue_list.title": "Диалоги",
+  "dialogue_list.create_button": "Создать диалог",
+  "dialogue_list.menu.delete": "Удалить",
+  "dialogue_list.menu.rename": "Переименовать",
+
+  "rename_dialog.title": "Переименовать диалог",
+  "rename_dialog.description": "Введите новое название для диалога.",
+  "rename_dialog.placeholder": "Новое название...",
+  "rename_dialog.cancel": "Отмена",
+  "rename_dialog.confirm": "Сохранить",
+
+  "settings.button": "Настройки",
+  "settings.title": "Настройки подключения",
+  "settings.api_key_label": "API-ключ для {provider}",
+  "settings.api_key_placeholder": "Введите ключ...",
+  "settings.select_provider": "Выберите провайдера",
+  "settings.select_model": "Выберите модель",
+  "settings.no_models": "Модели не найдены.",
+  "settings.save": "Сохранить",
+  "fill_required_fields": "Пожалуйста, выберите провайдера и модель.",
+  "api_key_required": "Требуется API-ключ.",
+  "settings.invalid_api_key": "API ключ недействителен или истёк.",
+  "settings.saving": "Сохранение..."
+
+}
