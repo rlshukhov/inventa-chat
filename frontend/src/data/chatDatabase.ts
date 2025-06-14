@@ -36,28 +36,28 @@ class ChatDatabase extends Dexie {
 
 // settings
 
-export async function saveApiKey(provider: 'gpt' | 'deepseek', key: string) {
+export async function saveApiKey(provider: 'gpt' | 'deepseek'| 'perplexity', key: string) {
     await db.settings.put({ key: provider, value: key });
 }
-export async function saveSelectedModel(provider: 'gpt' | 'deepseek', model: string) {
+export async function saveSelectedModel(provider: 'gpt' | 'deepseek'| 'perplexity', model: string) {
     await db.settings.put({ key: `model_${provider}`, value: model });
 }
 
-export async function getSelectedModel(provider: 'gpt' | 'deepseek'): Promise<string> {
+export async function getSelectedModel(provider: 'gpt' | 'deepseek'| 'perplexity'): Promise<string> {
     const setting = await db.settings.get(`model_${provider}`);
     return setting?.value || '';
 }
 
-export async function getApiKey(provider: 'gpt' | 'deepseek'): Promise<string> {
+export async function getApiKey(provider: 'gpt' | 'deepseek'| 'perplexity'): Promise<string> {
     const setting = await db.settings.get(provider);
     return setting?.value || '';
 }
 
-export async function saveSelectedProvider(provider: 'gpt' | 'deepseek') {
+export async function saveSelectedProvider(provider: 'gpt' | 'deepseek'| 'perplexity') {
     await db.settings.put({ key: 'selectedProvider', value: provider });
 }
 
-export async function getSelectedProvider(): Promise<'gpt' | 'deepseek' | ''> {
+export async function getSelectedProvider(): Promise<'gpt' | 'deepseek' | 'perplexity' | ''> {
     const setting = await db.settings.get('selectedProvider');
     return (setting?.value as 'gpt' | 'deepseek') || '';
 }

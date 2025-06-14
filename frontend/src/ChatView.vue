@@ -164,7 +164,7 @@ async function sendMessage(regenerating = false) {
   ];
 
   const rawProvider = await getSelectedProvider();
-  const provider = (rawProvider === 'gpt' || rawProvider === 'deepseek') ? rawProvider : 'gpt';
+  const provider = (rawProvider === 'gpt' || rawProvider === 'deepseek' || rawProvider === 'perplexity') ? rawProvider : 'gpt';
   let fullContent = '';
 
   try {

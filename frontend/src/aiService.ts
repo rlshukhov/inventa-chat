@@ -1,8 +1,26 @@
-import { getApiKey, getSelectedModel } from '@/data/chatDatabase.ts';
+import {getApiKey, getSelectedModel} from '@/data/chatDatabase.ts';
+
+const format = function (provider: 'gpt' | 'deepseek' | 'perplexity', text: string, links: string[] | null = null): string {
+    if (provider !== 'perplexity') {
+        return text;
+    }
+
+    let newText = text.replace(/\[(\d+)]/g, (_, group) => ` [^${group}]`);
+
+    if (links && links.length > 0) {
+        let linkIndex = 0;
+        newText += '\n\n' + links.map(() => {
+            const link = links[linkIndex++];
+            return `[^${linkIndex}]: ${link}`;
+        }).join('\n');
+    }
+
+    return newText;
+};
 
 export const fetchResponseStream = async (
     messages: { role: string; content: string }[],
-    provider: 'gpt' | 'deepseek' = 'gpt',
+    provider: 'gpt' | 'deepseek' | 'perplexity' = 'gpt',
     onUpdate: (partial: string) => void, // callback with partial response
     abortController?: AbortController
 ): Promise<void> => {
@@ -14,7 +32,7 @@ export const fetchResponseStream = async (
 
     const baseURL = provider === 'gpt'
         ? 'https://api.openai.com/v1'
-        : 'https://api.deepseek.com/v1';
+        : (provider === 'deepseek' ? 'https://api.deepseek.com/v1' : 'https://api.perplexity.ai');
 
     const url = `${baseURL}/chat/completions`;
 
@@ -46,9 +64,9 @@ export const fetchResponseStream = async (
     let partialResponse = '';
 
     while (true) {
-        const { done, value } = await reader.read();
+        const {done, value} = await reader.read();
         if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
+        const chunk = decoder.decode(value, {stream: true});
 
         const lines = chunk.split('\n').filter(line => line.trim().startsWith('data: '));
         for (const line of lines) {
@@ -58,10 +76,17 @@ export const fetchResponseStream = async (
             }
             try {
                 const data = JSON.parse(dataStr);
-                const delta = data.choices?.[0]?.delta?.content;
-                if (delta) {
-                    partialResponse += delta;
-                    onUpdate(partialResponse);
+                if (data.choices?.[0]?.message) {
+                    const content = data.choices?.[0]?.message?.content;
+                    if (content) {
+                        onUpdate(format(provider, content, data.citations));
+                    }
+                } else {
+                    const delta = data.choices?.[0]?.delta?.content;
+                    if (delta) {
+                        partialResponse += delta;
+                        onUpdate(format(provider, partialResponse));
+                    }
                 }
             } catch (e) {
                 // ignore parse errors for incomplete chunks

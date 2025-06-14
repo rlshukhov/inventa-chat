@@ -26,14 +26,17 @@ const isSaving = ref(false)
 
 const providers = [
   { label: 'ChatGPT', value: 'gpt' },
-  { label: 'DeepSeek', value: 'deepseek' }
+  { label: 'DeepSeek', value: 'deepseek' },
+  { label: 'Perplexity', value: 'perplexity' },
 ] as const
 
 const allModels = ref([
   { id: 'gpt-4.1-mini', provider: 'gpt' },
   { id: 'gpt-4.1-nano', provider: 'gpt' },
   { id: 'deepseek-chat', provider: 'deepseek' },
-  { id: 'deepseek-reasoner', provider: 'deepseek' }
+  { id: 'deepseek-reasoner', provider: 'deepseek' },
+  { id: 'sonar', provider: 'perplexity' },
+  { id: 'sonar-pro', provider: 'perplexity' },
 ])
 
 const isValid = computed(() => {
@@ -48,7 +51,8 @@ const isValid = computed(() => {
 
 const apiKeys = reactive<Record<ProviderType, string>>({
   gpt: '',
-  deepseek: ''
+  deepseek: '',
+  perplexity: '',
 })
 
 const filteredModels = computed(() =>
@@ -92,6 +96,12 @@ async function validateApiKey(provider: ProviderType, apiKey: string): Promise<b
       })
     } else if (provider === 'deepseek') {
       response = await fetch('https://api.deepseek.com/v1/models', {
+        headers: {
+          Authorization: `Bearer ${apiKey}`
+        }
+      })
+    } else if (provider === 'perplexity') {
+      response = await fetch('https://api.perplexity.ai/async/chat/completions', {
         headers: {
           Authorization: `Bearer ${apiKey}`
         }
