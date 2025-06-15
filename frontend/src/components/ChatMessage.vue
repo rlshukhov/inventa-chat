@@ -52,7 +52,7 @@ function copyWholeMessage() {
         :class="props.role === 'user' ? 'flex-row-reverse' : 'flex-row'">
       <!-- Message -->
         <div
-            class="relative p-3 rounded-2xl max-w-[75%] w-fit"
+            class="relative p-3 rounded-2xl max-w-[90%] w-fit"
             :class="props.role === 'user' ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'">
           <p v-if="model" class="text-xs text-gray-400 pb-2">{{ model }}</p>
           <Markdown
@@ -72,14 +72,14 @@ function copyWholeMessage() {
         <button
             v-if="props.role === 'user'"
             @click="$emit('edit')"
-            class="mr-1 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-500 text-xs inline-flex items-center justify-center"
+            class="mr-1 p-1 mt-2 rounded hover:bg-gray-200 dark:hover:bg-gray-500 text-xs inline-flex items-center justify-center"
             :class="{ 'invisible': !editable }">
           <Pencil class="w-4 h-4"/>
         </button>
 
         <button
             @click="copyWholeMessage"
-            class="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-500 text-xs inline-flex items-center justify-center">
+            class="p-1 mt-2 rounded hover:bg-gray-200 dark:hover:bg-gray-500 text-xs inline-flex items-center justify-center">
           <div v-if="isCopyIcon">
             <Copy class="w-4 h-4"/>
           </div>
