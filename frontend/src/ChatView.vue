@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {ref, nextTick, onMounted, watch} from 'vue'
+import {ref, nextTick, onMounted, watch, onBeforeUnmount} from 'vue'
 import DialogueList from '@/components/DialogueList.vue'
 import MessageList from '@/components/MessageList.vue'
 import DeleteDialogueDialog from '@/components/DeleteDialogueDialog.vue'
@@ -70,11 +70,42 @@ function autoResize() {
   textarea.style.height = textarea.scrollHeight + 'px';
 }
 
-function scrollToBottom() {
+let isUserScrolling: boolean = false;
+let scrollTimeout: number|undefined = undefined;
+const SCROLL_DEBOUNCE = 1000;
+
+function handleScroll() {
+  isUserScrolling = true;
+
+  clearTimeout(scrollTimeout);
+
+  scrollTimeout = setTimeout(() => {
+    isUserScrolling = false;
+  }, SCROLL_DEBOUNCE);
+}
+
+function setupScrollListener() {
+  const container = messageListRef.value;
+  if (!container) return;
+
+  container.addEventListener('scroll', handleScroll, { passive: true });
+}
+
+function isAtBottom(threshold = 150) {
+  const container = messageListRef.value;
+  if (!container) return;
+
+  return container.scrollTop + container.clientHeight >=
+      container.scrollHeight - threshold;
+}
+
+function scrollToBottom(force: boolean = true) {
   nextTick(() => {
+    if ((isUserScrolling || !isAtBottom()) && !force) return;
+
     messageListRef.value?.scrollTo({
       top: messageListRef.value.scrollHeight,
-      behavior: 'smooth'
+      behavior: force ? 'smooth' : 'instant',
     })
   })
 }
@@ -194,7 +225,7 @@ async function sendMessage(regenerating = false) {
             model: model.id,
           });
         }
-        scrollToBottom();
+        scrollToBottom(false);
       }
     }, abortController.value);
 
@@ -348,7 +379,15 @@ async function onConfirmDelete() {
 
 const selectedModel = ref('')
 
+onBeforeUnmount(() => {
+  const container = messageListRef.value;
+  container?.removeEventListener('scroll', handleScroll);
+  clearTimeout(scrollTimeout);
+});
+
 onMounted(async () => {
+  setupScrollListener();
+
   await loadDialogues()
   await nextTick(() => autoResize())
   const model = await getSelectedModel()
