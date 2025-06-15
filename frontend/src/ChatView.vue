@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import {ref, nextTick, onMounted, watch, onBeforeUnmount} from 'vue'
-import DialogueList from '@/components/DialogueList.vue'
 import MessageList from '@/components/MessageList.vue'
 import DeleteDialogueDialog from '@/components/DeleteDialogueDialog.vue'
 import RenameDialogueDialog from '@/components/RenameDialogueDialog.vue'
@@ -49,6 +48,8 @@ import {
   DropdownMenuPortal,
   DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu'
+import {SidebarContent, SidebarProvider} from "@/components/ui/sidebar";
+import DialogueSidebar from "@/DialogueSidebar.vue";
 
 const updateTheme = () => {
   const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -59,19 +60,8 @@ updateTheme();
 
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateTheme);
 
-// calculation of textarea height
-function autoResize() {
-  const textareaComponent = textareaRef.value as any;
-  const textarea = textareaComponent?.textarea as HTMLTextAreaElement | undefined;
-
-  if (!textarea) return;
-
-  textarea.style.height = 'auto';
-  textarea.style.height = textarea.scrollHeight + 'px';
-}
-
 let isUserScrolling: boolean = false;
-let scrollTimeout: number|undefined = undefined;
+let scrollTimeout: number | undefined = undefined;
 const SCROLL_DEBOUNCE = 1000;
 
 function handleScroll() {
@@ -88,7 +78,7 @@ function setupScrollListener() {
   const container = messageListRef.value;
   if (!container) return;
 
-  container.addEventListener('scroll', handleScroll, { passive: true });
+  container.addEventListener('scroll', handleScroll, {passive: true});
 }
 
 function isAtBottom(threshold = 150) {
@@ -126,7 +116,6 @@ function startEditingLastUserMessage() {
   input.value = content
   editingContent.value = content
   editingLastUserMessage.value = true
-  nextTick(autoResize)
 }
 
 // editing message
@@ -389,7 +378,6 @@ onMounted(async () => {
   setupScrollListener();
 
   await loadDialogues()
-  await nextTick(() => autoResize())
   const model = await getSelectedModel()
   const apiKey = model ? await getApiKey(model.provider) : null
 
@@ -407,8 +395,6 @@ onMounted(async () => {
   await filterProviders()
 })
 
-watch(input, () => nextTick(() => autoResize()))
-
 watch(isDialogsOpen, (val) => {
   if (val) {
     sheetOpen.value = false
@@ -419,7 +405,7 @@ async function filterProviders() {
   filteredProviders.value = []
 
   let filtered: Array<Provider> = []
-  for (let i=0; i<providers.length; i++) {
+  for (let i = 0; i < providers.length; i++) {
     if (await getApiKey(providers[i].value)) {
       filtered.push(providers[i])
     }
@@ -436,157 +422,160 @@ const getModelsByProvider = (provider: string) => {
 </script>
 
 <template>
-  <div class="p-safe flex flex-row h-full w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors">
+  <div
+      class="flex flex-row p-safe h-full w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors">
 
     <!-- Sidebar for large screens -->
-    <div class="hidden md:flex min-w-80 w-80">
-      <DialogueList
-          :dialogues="dialogues"
-          :selectedId="selectedDialogue?.id || null"
-          @select="selectDialogue"
-          @delete="dialogue => { dialogueToDelete = dialogue; isRemoveConfirmOpen = true }"
-          @rename="openRenameModal"
-          @create="createNewDialogue"
-          @delete-all="openDeleteDialogs"
-      />
-    </div>
+    <SidebarContent>
+      <SidebarProvider>
+        <DialogueSidebar
+            :dialogues="dialogues"
+            :selectedId="selectedDialogue?.id || null"
+            @select="selectDialogue"
+            @create="createNewDialogue"
+            @delete="dialogue => { dialogueToDelete = dialogue; isRemoveConfirmOpen = true }"
+            @rename="openRenameModal"
+            @delete-all="openDeleteDialogs"
+        />
+        <main class="w-full min-w-1">
+          <!-- Main content -->
+          <div class="p-4 flex flex-col w-full h-full min-w-1">
 
-    <!-- Main content -->
-    <div class="p-4 flex flex-col flex-1 min-w-1">
+            <!-- Heading and settings button for large screens -->
+            <div class="hidden md:flex items-center justify-between border-b dark:border-gray-700 pb-3">
+              <p class="text-lg font-semibold">
+                {{ selectedDialogue?.title }}
+              </p>
+              <Settings v-model:open="isSettingsOpen"/>
+            </div>
 
-      <!-- Heading and settings button for large screens -->
-      <div class="hidden md:flex items-center justify-between border-b dark:border-gray-700 pb-3">
-        <p class="text-lg font-semibold">
-          {{ selectedDialogue?.title }}
-        </p>
-        <Settings v-model:open="isSettingsOpen"/>
-      </div>
+            <!-- Mobile menu -->
+            <MobileDialogueSheet
+                :dialogues="dialogues"
+                :selectedId="selectedDialogue?.id || null"
+                @select="selectDialogue"
+                @create="createNewDialogue"
+                @delete="dialogue => { dialogueToDelete = dialogue; isRemoveConfirmOpen = true }"
+                @rename="openRenameModal"
+                @delete-all="openDeleteDialogs"/>
 
-      <!-- Mobile menu -->
-      <MobileDialogueSheet
-          :dialogues="dialogues"
-          :selectedId="selectedDialogue?.id || null"
-          @select="selectDialogue"
-          @create="createNewDialogue"
-          @delete="dialogue => { dialogueToDelete = dialogue; isRemoveConfirmOpen = true }"
-          @rename="openRenameModal"
-          @delete-all="openDeleteDialogs"/>
+            <!-- List of messages -->
+            <div v-if="selectedDialogue" ref="messageListRef" class="flex-1 overflow-y-auto space-y-2">
+              <MessageList
+                  :messages="selectedDialogue.messages"
+                  @edit-last-user-message="startEditingLastUserMessage"/>
+              <div v-if="isTyping" class="p-1 text-gray-500">
+                {{ t('bot_typing') }}
+              </div>
+            </div>
+            <div v-else class="text-center text-gray-500 dark:text-gray-400">
+              {{ t('no_dialogue_selected') }}
+            </div>
 
-      <!-- List of messages -->
-      <div v-if="selectedDialogue" ref="messageListRef" class="flex-1 overflow-y-auto space-y-2">
-        <MessageList
-            :messages="selectedDialogue.messages"
-            @edit-last-user-message="startEditingLastUserMessage"/>
-        <div v-if="isTyping" class="p-1 text-gray-500">
-          {{ t('bot_typing') }}
-        </div>
-      </div>
-      <div v-else class="text-center text-gray-500 dark:text-gray-400">
-        {{ t('no_dialogue_selected') }}
-      </div>
+            <div v-if="selectedDialogue" class="flex flex-row gap-1 text-sm text-gray-500 py-1">
+              <p>{{ t('model') }}:</p>
 
-      <div v-if="selectedDialogue" class="flex flex-row gap-1 text-sm text-gray-500 py-1">
-        <p>{{t('model')}}:</p>
+              <DropdownMenu>
+                <DropdownMenuTrigger as-child>
+                  <Button variant="ghost" class="px-1 py-0 h-auto">
+                    <span class="underline decoration-dotted">
+                      {{ selectedModel || t('select_model') }}
+                    </span>
+                  </Button>
+                </DropdownMenuTrigger>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger as-child>
-            <Button variant="ghost" class="px-1 py-0 h-auto">
-          <span class="underline decoration-dotted">
-            {{ selectedModel || t('select_model') }}
-          </span>
-            </Button>
-          </DropdownMenuTrigger>
+                <DropdownMenuContent class="w-48">
+                  <DropdownMenuLabel>{{ t('select_model') }}</DropdownMenuLabel>
+                  <DropdownMenuSeparator/>
 
-          <DropdownMenuContent class="w-48">
-            <DropdownMenuLabel>{{ t('select_model') }}</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-
-            <!-- Для каждого провайдера создаем подменю -->
-            <DropdownMenuSub
-                v-for="provider in filteredProviders"
-                :key="provider.value"
-            >
-              <DropdownMenuSubTrigger>
-                {{ provider.label }}
-              </DropdownMenuSubTrigger>
-
-              <DropdownMenuPortal>
-                <DropdownMenuSubContent>
-                  <!-- Модели для текущего провайдера -->
-                  <DropdownMenuItem
-                      v-for="model in getModelsByProvider(provider.value)"
-                      :key="model.id"
-                      @click="saveSelectedModel(model)"
+                  <!-- Для каждого провайдера создаем подменю -->
+                  <DropdownMenuSub
+                      v-for="provider in filteredProviders"
+                      :key="provider.value"
                   >
-                    {{ model.id }}
-                  </DropdownMenuItem>
-                </DropdownMenuSubContent>
-              </DropdownMenuPortal>
-            </DropdownMenuSub>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+                    <DropdownMenuSubTrigger>
+                      {{ provider.label }}
+                    </DropdownMenuSubTrigger>
 
-      <!-- Input and send button -->
-      <div v-if="selectedDialogue" class="flex items-end w-full space-x-2 mt-auto">
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent>
+                        <!-- Модели для текущего провайдера -->
+                        <DropdownMenuItem
+                            v-for="model in getModelsByProvider(provider.value)"
+                            :key="model.id"
+                            @click="saveSelectedModel(model)"
+                        >
+                          {{ model.id }}
+                        </DropdownMenuItem>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <!-- Input and send button -->
+            <div v-if="selectedDialogue" class="flex items-end w-full space-x-2 mt-auto">
         <Textarea
             v-model="input"
             ref="textareaRef"
             :placeholder="t('enter_message')"
-            class="flex-1 p-2 rounded border dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[2.5rem] resize-none"
-            @input="autoResize"
+            class="flex-1 p-2 rounded border dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[4rem] resize-none"
             @keydown.enter.exact.prevent="handleEnter"/>
 
-        <!-- Buttons -->
-        <div v-if="editingLastUserMessage">
-          <Button :disabled="input.length === 0"
-                  @click="confirmEditAndRegenerate"
+              <!-- Buttons -->
+              <div v-if="editingLastUserMessage">
+                <Button :disabled="input.length === 0"
+                        @click="confirmEditAndRegenerate"
+                        variant="ghost">
+                  <Send/>
+                </Button>
+                <Button @click="cancelEditing" variant="ghost">
+                  <X/>
+                </Button>
+              </div>
+
+              <Button
+                  v-else-if="!isAwaiting"
+                  :disabled="input.length === 0"
+                  @click="handleEnter"
+                  class="flex items-center justify-center h-full"
                   variant="ghost">
-            <Send/>
-          </Button>
-          <Button @click="cancelEditing" variant="ghost">
-            <X/>
-          </Button>
-        </div>
+                <Send/>
+              </Button>
 
-        <Button
-            v-else-if="!isAwaiting"
-            :disabled="input.length === 0"
-            @click="handleEnter"
-            class="flex items-center justify-center h-full"
-            variant="ghost">
-          <Send/>
-        </Button>
+              <Button
+                  v-if="isAwaiting"
+                  @click="stopGeneration"
+                  class="h-full"
+                  variant="destructive">
+                {{ t('stop') }}
+              </Button>
+            </div>
 
-        <Button
-            v-if="isAwaiting"
-            @click="stopGeneration"
-            class="h-full"
-            variant="destructive">
-          {{ t('stop') }}
-        </Button>
-      </div>
+            <!-- Delete modal -->
+            <DeleteDialogueDialog
+                :open="isRemoveConfirmOpen"
+                :dialogue="dialogueToDelete"
+                @update:open="isRemoveConfirmOpen = $event"
+                @confirm="confirmDeleteDialogue"/>
 
-      <!-- Delete modal -->
-      <DeleteDialogueDialog
-          :open="isRemoveConfirmOpen"
-          :dialogue="dialogueToDelete"
-          @update:open="isRemoveConfirmOpen = $event"
-          @confirm="confirmDeleteDialogue"/>
+            <!-- Rename modal -->
+            <RenameDialogueDialog
+                :open="renameModalOpen"
+                :title="newDialogueTitle"
+                @update:open="renameModalOpen = $event"
+                @confirm="title => { newDialogueTitle = title; confirmRenameDialogue() }"/>
 
-      <!-- Rename modal -->
-      <RenameDialogueDialog
-          :open="renameModalOpen"
-          :title="newDialogueTitle"
-          @update:open="renameModalOpen = $event"
-          @confirm="title => { newDialogueTitle = title; confirmRenameDialogue() }"/>
-
-      <ConfirmDeleteDialogs
-          :open="isDialogsOpen"
-          :dialogue="{ title: t('all-dialog') }"
-          @update:open="val => isDialogsOpen = val"
-          @confirm="onConfirmDelete"
-      />
-    </div>
+            <ConfirmDeleteDialogs
+                :open="isDialogsOpen"
+                :dialogue="{ title: t('all-dialog') }"
+                @update:open="val => isDialogsOpen = val"
+                @confirm="onConfirmDelete"
+            />
+          </div>
+        </main>
+      </SidebarProvider>
+    </SidebarContent>
   </div>
 </template>

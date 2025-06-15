@@ -26,7 +26,8 @@ const options = {
     if (lang && hljs.getLanguage(lang)) {
       try {
         return hljs.highlight(str, {language: lang}).value
-      } catch {}
+      } catch {
+      }
     }
     return ''
   }
@@ -51,19 +52,19 @@ function copyWholeMessage() {
         class="flex items-start gap-2 w-full"
         :class="props.role === 'user' ? 'flex-row-reverse' : 'flex-row'">
       <!-- Message -->
-        <div
-            class="relative p-3 rounded-2xl max-w-[90%] w-fit"
-            :class="props.role === 'user' ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'">
-          <p v-if="model" class="text-xs text-gray-400 pb-2">{{ model }}</p>
-          <Markdown
-              :source="props.content"
-              :options="options"
-              :plugins="[copyButtonPlugin, hrefPlugin]"
-              :class="[
-            'markdown prose prose-sm dark:prose-invert',
+      <div
+          class="relative p-3 rounded-2xl max-w-[90%] w-fit"
+          :class="props.role === 'user' ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'">
+        <p v-if="model" class="text-xs text-gray-400 pb-2">{{ model }}</p>
+        <Markdown
+            :source="props.content"
+            :options="options"
+            :plugins="[copyButtonPlugin, hrefPlugin]"
+            :class="[
+            'markdown prose prose-sm dark:prose-invert prose-hr:border-dotted prose-hr:border-b-2 prose-hr:border-b-gray-400 max-w-none',
             props.role === 'user' ? 'prose-invert text-white' : '',
           ]"/>
-        </div>
+      </div>
 
       <!-- Buttons -->
       <div
