@@ -513,7 +513,7 @@ const getModelsByProvider = (provider: string) => {
         <Button
             v-else-if="!isAwaiting"
             :disabled="input.length === 0"
-            @click="sendMessage"
+            @click="handleEnter"
             class="flex items-center justify-center h-full"
             variant="ghost">
           <Send/>
