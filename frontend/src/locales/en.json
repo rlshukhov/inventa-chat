@@ -4,6 +4,8 @@
   "bot_typing": "...",
   "enter_message": "Enter a message...",
   "stop": "Stop",
+  "model": "Model",
+  "select_model": "Select model",
 
   "copied": "Copied",
 

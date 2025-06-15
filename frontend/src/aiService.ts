@@ -1,6 +1,33 @@
 import {getApiKey, getSelectedModel} from '@/data/chatDatabase.ts';
 
-const format = function (provider: 'gpt' | 'deepseek' | 'perplexity', text: string, links: string[] | null = null): string {
+export type ProviderRaw = 'perplexity' | 'deepseek' | 'gpt';
+
+export interface Provider {
+    label: string;
+    value: ProviderRaw;
+}
+
+export interface Model {
+    id: string;
+    provider: ProviderRaw;
+}
+
+export const providers: Array<Provider> = [
+    { label: 'ChatGPT', value: 'gpt' },
+    { label: 'DeepSeek', value: 'deepseek' },
+    { label: 'Perplexity', value: 'perplexity' },
+]
+
+export const models: Array<Model> = [
+    { id: 'gpt-4.1-mini', provider: 'gpt' },
+    { id: 'gpt-4.1-nano', provider: 'gpt' },
+    { id: 'deepseek-chat', provider: 'deepseek' },
+    { id: 'deepseek-reasoner', provider: 'deepseek' },
+    { id: 'sonar', provider: 'perplexity' },
+    { id: 'sonar-pro', provider: 'perplexity' },
+]
+
+const format = function (provider: ProviderRaw, text: string, links: string[] | null = null): string {
     if (provider !== 'perplexity') {
         return text;
     }
@@ -20,24 +47,23 @@ const format = function (provider: 'gpt' | 'deepseek' | 'perplexity', text: stri
 
 export const fetchResponseStream = async (
     messages: { role: string; content: string }[],
-    provider: 'gpt' | 'deepseek' | 'perplexity' = 'gpt',
-    onUpdate: (partial: string) => void, // callback with partial response
+    onUpdate: (partial: string, model: Model) => void, // callback with partial response
     abortController?: AbortController
 ): Promise<void> => {
-    const apiKey = await getApiKey(provider);
-    const model = await getSelectedModel(provider);
+    const model = await getSelectedModel();
+    if (!model) throw new Error(`Model not selected`);
 
-    if (!apiKey) throw new Error(`API key not found for provider "${provider}"`);
-    if (!model) throw new Error(`Model not selected for provider "${provider}"`);
+    const apiKey = await getApiKey(model?.provider)
+    if (!apiKey) throw new Error(`API key not found for provider "${model.provider}"`);
 
-    const baseURL = provider === 'gpt'
+    const baseURL = model.provider === 'gpt'
         ? 'https://api.openai.com/v1'
-        : (provider === 'deepseek' ? 'https://api.deepseek.com/v1' : 'https://api.perplexity.ai');
+        : (model.provider === 'deepseek' ? 'https://api.deepseek.com/v1' : 'https://api.perplexity.ai');
 
     const url = `${baseURL}/chat/completions`;
 
     const requestBody = {
-        model,
+        model: model.id,
         messages,
         stream: true,
     };
@@ -79,13 +105,13 @@ export const fetchResponseStream = async (
                 if (data.choices?.[0]?.message) {
                     const content = data.choices?.[0]?.message?.content;
                     if (content) {
-                        onUpdate(format(provider, content, data.citations));
+                        onUpdate(format(model.provider, content, data.citations), model);
                     }
                 } else {
                     const delta = data.choices?.[0]?.delta?.content;
                     if (delta) {
                         partialResponse += delta;
-                        onUpdate(format(provider, partialResponse));
+                        onUpdate(format(model.provider, partialResponse), model);
                     }
                 }
             } catch (e) {

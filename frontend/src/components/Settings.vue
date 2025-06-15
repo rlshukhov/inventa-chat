@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, reactive, onMounted, watch } from 'vue'
+import { ref, computed, reactive, onMounted } from 'vue'
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -8,83 +8,64 @@ import {
   AlertDialogFooter,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import {Combobox, ComboboxAnchor, ComboboxEmpty, ComboboxGroup, ComboboxItem, ComboboxItemIndicator, ComboboxList, ComboboxTrigger} from '@/components/ui/combobox'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Settings2, ChevronsUpDown, Check, Globe } from 'lucide-vue-next'
-import {getApiKey, getSelectedModel, getSelectedProvider, saveApiKey, saveSelectedModel, saveSelectedProvider, saveLocale, getLocale} from '@/data/chatDatabase.ts'
+import { Settings2, Globe } from 'lucide-vue-next'
+import {saveApiKey, saveLocale, getLocale, getApiKey} from '@/data/chatDatabase.ts'
 import type { Locale} from '@/data/chatDatabase.ts'
 import { useI18n } from 'vue-i18n'
+import {providers, type ProviderRaw} from "@/aiService.ts";
+import {eventBus} from "@/eventBus.ts";
 
 const { t, locale } = useI18n()
-type ProviderType = typeof providers[number]['value']
-const selectedProvider = ref<typeof providers[number] | null>(null)
-const selectedModel = ref<{ id: string, provider: string } | null>(null)
 const open = defineModel<boolean>('open')
 const errorMessage = ref<string | null>(null)
 const isSaving = ref(false)
 
-const providers = [
-  { label: 'ChatGPT', value: 'gpt' },
-  { label: 'DeepSeek', value: 'deepseek' },
-  { label: 'Perplexity', value: 'perplexity' },
-] as const
-
-const allModels = ref([
-  { id: 'gpt-4.1-mini', provider: 'gpt' },
-  { id: 'gpt-4.1-nano', provider: 'gpt' },
-  { id: 'deepseek-chat', provider: 'deepseek' },
-  { id: 'deepseek-reasoner', provider: 'deepseek' },
-  { id: 'sonar', provider: 'perplexity' },
-  { id: 'sonar-pro', provider: 'perplexity' },
-])
-
 const isValid = computed(() => {
-  const provider = selectedProvider.value?.value
-  return !!(
-      selectedProvider.value &&
-      selectedModel.value &&
-      provider &&
-      apiKeys[provider]?.trim()
-  )
+  return apiKeys.gpt || apiKeys.deepseek || apiKeys.perplexity;
 })
 
-const apiKeys = reactive<Record<ProviderType, string>>({
+const apiKeys = reactive<Record<ProviderRaw, string>>({
   gpt: '',
   deepseek: '',
   perplexity: '',
 })
 
-const filteredModels = computed(() =>
-    allModels.value.filter(m => m.provider === selectedProvider.value?.value)
-)
-
 async function saveSettings() {
-  if (!isValid.value || !selectedProvider.value) return
+  if (!isValid.value) return
 
   errorMessage.value = null
   isSaving.value = true
 
-  const provider = selectedProvider.value.value
-  const apiKey = apiKeys[provider]
+  for (let i=0; i < providers.length; i++) {
+    const provider = providers[i].value
+    const apiKey = apiKeys[provider]
+    if (!apiKey) {
+      continue
+    }
 
-  const isKeyValid = await validateApiKey(provider, apiKey)
+    const isKeyValid = await validateApiKey(provider, apiKey)
 
-  if (!isKeyValid) {
-    errorMessage.value = t('settings.invalid_api_key') || 'API key is invalid'
-    isSaving.value = false
-    return
+    if (!isKeyValid) {
+      errorMessage.value = t('settings.invalid_api_key') || 'API key is invalid'
+      isSaving.value = false
+      return
+    }
   }
 
-  await saveApiKey(provider, apiKey)
-  await saveSelectedModel(provider, selectedModel.value!.id)
-  await saveSelectedProvider(provider)
+  for (let i=0; i < providers.length; i++) {
+    const provider = providers[i].value
+    await saveApiKey(provider, apiKeys[provider])
+  }
+
+  eventBus.emit("settingsUpdate", null)
 
   isSaving.value = false
   open.value = false
 }
 
-async function validateApiKey(provider: ProviderType, apiKey: string): Promise<boolean> {
+async function validateApiKey(provider: ProviderRaw, apiKey: string): Promise<boolean> {
   try {
     let response: Response
 
@@ -124,22 +105,9 @@ onMounted(async () => {
     locale.value = savedLocale as 'en' | 'ru'
   }
 
-  const savedProvider = await getSelectedProvider();
-  console.log(savedProvider);
-  if (savedProvider) {
-    selectedProvider.value = providers.find(p => p.value === savedProvider) || null;
-
-    if (savedProvider) {
-      const savedApiKey = await getApiKey(savedProvider);
-      if (savedApiKey) apiKeys[savedProvider] = savedApiKey;
-
-      const savedModelId = await getSelectedModel(savedProvider);
-      console.log(savedModelId);
-      if (savedModelId) {
-        const model = allModels.value.find(m => m.id === savedModelId && m.provider === savedProvider);
-        if (model) selectedModel.value = model;
-      }
-    }
+  for (let i=0; i < providers.length; i++) {
+    const provider = providers[i].value
+    apiKeys[provider] = await getApiKey(provider)
   }
 });
 
@@ -147,30 +115,6 @@ async function toggleLocale() {
   locale.value = locale.value === 'en' ? 'ru' : 'en'
   await saveLocale(locale.value as Locale)
 }
-
-// saving settings
-watch(() => selectedProvider.value, async (newProvider) => {
-  if (newProvider) {
-    const prov = newProvider.value
-    apiKeys[prov] = await getApiKey(prov) || ''
-    const modelId = await getSelectedModel(prov)
-    if (modelId) {
-      const model = allModels.value.find(m => m.id === modelId && m.provider === prov)
-      selectedModel.value = model || null
-    } else {
-      selectedModel.value = null
-    }
-  } else {
-    Object.keys(apiKeys).forEach(k => apiKeys[k as ProviderType] = '')
-    selectedModel.value = null
-  }
-})
-
-watch(() => selectedModel.value, () => {
-  if (selectedProvider.value && selectedModel.value) {
-    localStorage.setItem('selectedModel_' + selectedProvider.value.value, selectedModel.value.id) // <-- localStorage
-  }
-})
 </script>
 
 <template>
@@ -200,69 +144,16 @@ watch(() => selectedModel.value, () => {
 
       <div class="grid gap-4 py-4">
         <!-- API Key -->
-        <div v-if="selectedProvider" class="space-y-1">
+        <div class="space-y-1" v-for="provider in providers">
           <label class="text-sm font-medium">
-            {{ t('settings.api_key_label', { provider: selectedProvider.label }) }}
+            {{ t('settings.api_key_label', { provider: provider.label }) }}
           </label>
           <Input
-              v-model="apiKeys[selectedProvider.value]"
+              v-model="apiKeys[provider.value]"
               :placeholder="t('settings.api_key_placeholder')"
               type="password"
           />
         </div>
-
-        <!-- Provider selection -->
-        <Combobox v-model="selectedProvider" by="value">
-          <ComboboxAnchor as-child>
-            <ComboboxTrigger as-child>
-              <Button variant="outline" class="w-full justify-between">
-                {{ selectedProvider?.label ?? t('settings.select_provider') }}
-                <ChevronsUpDown class="ml-2 h-4 w-4 opacity-50" />
-              </Button>
-            </ComboboxTrigger>
-          </ComboboxAnchor>
-          <ComboboxList>
-            <ComboboxGroup>
-              <ComboboxItem
-                  v-for="provider in providers"
-                  :key="provider.value"
-                  :value="provider"
-              >
-                {{ provider.label }}
-                <ComboboxItemIndicator>
-                  <Check class="ml-auto h-4 w-4" />
-                </ComboboxItemIndicator>
-              </ComboboxItem>
-            </ComboboxGroup>
-          </ComboboxList>
-        </Combobox>
-
-        <!-- Model selection -->
-        <Combobox v-if="selectedProvider" v-model="selectedModel" by="id">
-          <ComboboxAnchor as-child>
-            <ComboboxTrigger as-child>
-              <Button variant="outline" class="w-full justify-between">
-                {{ selectedModel?.id ?? t('settings.select_model') }}
-                <ChevronsUpDown class="ml-2 h-4 w-4 opacity-50" />
-              </Button>
-            </ComboboxTrigger>
-          </ComboboxAnchor>
-          <ComboboxList>
-            <ComboboxEmpty>{{ t('settings.no_models') }}</ComboboxEmpty>
-            <ComboboxGroup>
-              <ComboboxItem
-                  v-for="model in filteredModels"
-                  :key="model.id"
-                  :value="model"
-              >
-                {{ model.id }}
-                <ComboboxItemIndicator>
-                  <Check class="ml-auto h-4 w-4" />
-                </ComboboxItemIndicator>
-              </ComboboxItem>
-            </ComboboxGroup>
-          </ComboboxList>
-        </Combobox>
 
         <!-- Language selection -->
         <Button @click="toggleLocale" variant="secondary">

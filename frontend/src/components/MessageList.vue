@@ -2,7 +2,7 @@
 import ChatMessage from './ChatMessage.vue'
 import {computed} from "vue";
 const props = defineProps<{
-  messages: { role: 'user' | 'assistant', content: string }[]
+  messages: { role: 'user' | 'assistant', content: string, model: string | null }[]
 }>()
 
 const emit = defineEmits(['edit-last-user-message'])
@@ -22,6 +22,7 @@ const lastUserMessageIndex = computed(() => {
         :key="index"
         :content="message.content"
         :role="message.role"
+        :model="message.model"
         :editable="index === lastUserMessageIndex"
         @edit="() => $emit('edit-last-user-message')"
     />

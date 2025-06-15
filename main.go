@@ -28,7 +28,9 @@ func main() {
 			Backdrop: application.MacBackdropNormal,
 			TitleBar: application.MacTitleBarDefault,
 		},
-		URL: "/",
+		Width:  1200,
+		Height: 800,
+		URL:    "/",
 	})
 
 	err := app.Run()

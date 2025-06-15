@@ -1,4 +1,6 @@
 import Dexie, { type Table } from 'dexie';
+import {eventBus} from "@/eventBus.ts";
+import type {Model, ProviderRaw} from "@/aiService.ts";
 
 export interface ChatMessage {
     id?: number;
@@ -6,6 +8,7 @@ export interface ChatMessage {
     role: 'assistant' | 'user';
     content: string;
     timestamp: number;
+    model: string | null;
 }
 
 export interface Setting {
@@ -39,27 +42,23 @@ class ChatDatabase extends Dexie {
 export async function saveApiKey(provider: 'gpt' | 'deepseek'| 'perplexity', key: string) {
     await db.settings.put({ key: provider, value: key });
 }
-export async function saveSelectedModel(provider: 'gpt' | 'deepseek'| 'perplexity', model: string) {
-    await db.settings.put({ key: `model_${provider}`, value: model });
+export async function saveSelectedModel(model: Model) {
+    await db.settings.put({ key: 'selected_model', value: [model.provider, model.id].join('_') });
+    eventBus.emit('selectedModelUpdate', model);
 }
 
-export async function getSelectedModel(provider: 'gpt' | 'deepseek'| 'perplexity'): Promise<string> {
-    const setting = await db.settings.get(`model_${provider}`);
-    return setting?.value || '';
+export async function getSelectedModel(): Promise<Model|null> {
+    const setting = await db.settings.get('selected_model');
+    if (!(setting?.value)) {
+        return null
+    }
+
+    return {id: setting.value.split('_')[1], provider: setting.value.split('_')[0] as ProviderRaw}
 }
 
-export async function getApiKey(provider: 'gpt' | 'deepseek'| 'perplexity'): Promise<string> {
+export async function getApiKey(provider: ProviderRaw): Promise<string> {
     const setting = await db.settings.get(provider);
     return setting?.value || '';
-}
-
-export async function saveSelectedProvider(provider: 'gpt' | 'deepseek'| 'perplexity') {
-    await db.settings.put({ key: 'selectedProvider', value: provider });
-}
-
-export async function getSelectedProvider(): Promise<'gpt' | 'deepseek' | 'perplexity' | ''> {
-    const setting = await db.settings.get('selectedProvider');
-    return (setting?.value as 'gpt' | 'deepseek') || '';
 }
 
 // language

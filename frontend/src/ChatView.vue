@@ -5,15 +5,17 @@ import MessageList from '@/components/MessageList.vue'
 import DeleteDialogueDialog from '@/components/DeleteDialogueDialog.vue'
 import RenameDialogueDialog from '@/components/RenameDialogueDialog.vue'
 import MobileDialogueSheet from '@/components/MobileDialogueSheet.vue'
-import { Textarea } from '@/components/ui/textarea'
+import {Textarea} from '@/components/ui/textarea'
 import {Send, X} from 'lucide-vue-next'
-import { Button } from "@/components/ui/button";
-import {db, getApiKey, getSelectedModel, getSelectedProvider} from '@/data/chatDatabase.ts';
-import { fetchResponseStream } from '@/aiService.ts';
+import {Button} from "@/components/ui/button";
+import {db, getApiKey, getSelectedModel, saveSelectedModel} from '@/data/chatDatabase.ts';
+import {fetchResponseStream, type Model, type Provider} from '@/aiService.ts';
 import Settings from "@/components/Settings.vue";
-import type { ChatMessage, Dialogue } from '@/data/chatDatabase.ts';
-import { useI18n } from 'vue-i18n'
+import type {ChatMessage, Dialogue} from '@/data/chatDatabase.ts';
+import {useI18n} from 'vue-i18n'
 import ConfirmDeleteDialogs from '@/components/ConfirmDeleteDialogs.vue'
+import {eventBus} from "@/eventBus.ts";
+import {providers, models} from "@/aiService.ts";
 
 const input = ref('')
 const isAwaiting = ref(false)
@@ -29,11 +31,24 @@ const dialogues = ref<Dialogue[]>([])
 const selectedDialogue = ref<Dialogue | null>(null)
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const isSettingsOpen = defineModel<boolean>('open')
-const { t } = useI18n()
+const {t} = useI18n()
 const abortController = ref<AbortController | null>(null)
 const editingLastUserMessage = ref(false)
 const editingContent = ref('')
 const isDialogsOpen = ref(false)
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
+  DropdownMenuSubTrigger,
+} from '@/components/ui/dropdown-menu'
 
 const updateTheme = () => {
   const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -95,7 +110,7 @@ async function confirmEditAndRegenerate() {
   userMessage.content = input.value;
 
   if (userMessage.id) {
-    await db.messages.update(userMessage.id, { content: input.value });
+    await db.messages.update(userMessage.id, {content: input.value});
   }
 
   if (messages[assistantIndex]?.role === 'assistant') {
@@ -136,16 +151,11 @@ async function sendMessage(regenerating = false) {
       dialogueId: currentDialogueId,
       role: 'user',
       content: userMessageContent,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      model: null,
     }
 
-    selectedDialogue.value.messages.push({
-      id: undefined,
-      dialogueId: userMessage.dialogueId,
-      role: userMessage.role,
-      content: userMessage.content,
-      timestamp: userMessage.timestamp,
-    });
+    selectedDialogue.value.messages.push(userMessage);
 
     await db.messages.add(userMessage);
   }
@@ -156,20 +166,20 @@ async function sendMessage(regenerating = false) {
   scrollToBottom();
 
   const fullContext = [
-    { role: 'system', content: 'Ты полезный ассистент, помогаешь по программированию и другим вопросам.' },
+    {role: 'system', content: 'Ты полезный ассистент, помогаешь по программированию и другим вопросам.'},
     ...selectedDialogue.value.messages.map(m => ({
       role: m.role,
       content: m.content
     }))
   ];
 
-  const rawProvider = await getSelectedProvider();
-  const provider = (rawProvider === 'gpt' || rawProvider === 'deepseek' || rawProvider === 'perplexity') ? rawProvider : 'gpt';
   let fullContent = '';
+  let mdl = '';
 
   try {
-    await fetchResponseStream(fullContext, provider, (partial: string) => {
+    await fetchResponseStream(fullContext, (partial: string, model: Model) => {
       fullContent = partial;
+      mdl = model.id
       if (selectedDialogue.value?.id === currentDialogueId) {
         const lastMessage = selectedDialogue.value.messages[selectedDialogue.value.messages.length - 1];
         if (lastMessage?.role === 'assistant') {
@@ -180,7 +190,8 @@ async function sendMessage(regenerating = false) {
             dialogueId: currentDialogueId,
             role: 'assistant',
             content: partial,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            model: model.id,
           });
         }
         scrollToBottom();
@@ -192,7 +203,8 @@ async function sendMessage(regenerating = false) {
         dialogueId: currentDialogueId,
         role: 'assistant',
         content: fullContent,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        model: mdl,
       });
     }
   } catch (e: unknown) {
@@ -228,6 +240,7 @@ async function selectDialogue(dialogue: Dialogue) {
     role: msg.role,
     content: msg.content,
     timestamp: msg.timestamp,
+    model: msg.model,
   }));
 
   scrollToBottom()
@@ -257,7 +270,7 @@ function confirmDeleteDialogue() {
 }
 
 function openRenameModal(dialogue: Dialogue) {
-  dialogueToRename.value = { ...dialogue }
+  dialogueToRename.value = {...dialogue}
   newDialogueTitle.value = dialogue.title
   renameModalOpen.value = true
 }
@@ -269,15 +282,15 @@ async function confirmRenameDialogue() {
 
   dialogues.value = dialogues.value.map(d =>
       d.id === dialogueToRename.value!.id
-          ? { ...d, title: newTitle }
+          ? {...d, title: newTitle}
           : d
   )
 
   if (selectedDialogue.value?.id === dialogueToRename.value.id) {
-    selectedDialogue.value = { ...selectedDialogue.value, title: newTitle }
+    selectedDialogue.value = {...selectedDialogue.value, title: newTitle}
   }
 
-  await db.dialogues.update(dialogueToRename.value.id, { title: newTitle });
+  await db.dialogues.update(dialogueToRename.value.id, {title: newTitle});
 
   renameModalOpen.value = false
   dialogueToRename.value = null
@@ -288,11 +301,11 @@ async function createNewDialogue() {
 
   const newDialogue = {
     id: newDialogueId,
-    title: t('new_dialogue', { n: dialogues.value.length + 1 }),
+    title: t('new_dialogue', {n: dialogues.value.length + 1}),
     messages: []
   };
 
-  await db.dialogues.add({ id: newDialogue.id, title: newDialogue.title });
+  await db.dialogues.add({id: newDialogue.id, title: newDialogue.title});
 
   dialogues.value.unshift(newDialogue);
 
@@ -333,16 +346,26 @@ async function onConfirmDelete() {
   selectedDialogue.value = null
 }
 
+const selectedModel = ref('')
+
 onMounted(async () => {
   await loadDialogues()
   await nextTick(() => autoResize())
-  const provider = await getSelectedProvider()
-  const model = provider ? await getSelectedModel(provider) : null
-  const apiKey = provider ? await getApiKey(provider) : null
+  const model = await getSelectedModel()
+  const apiKey = model ? await getApiKey(model.provider) : null
 
-  if (!provider || !model || !apiKey) {
+  if (!apiKey) {
     isSettingsOpen.value = true
   }
+
+  if (model) {
+    selectedModel.value = model.id
+  }
+  eventBus.on('selectedModelUpdate', (newModel: Model) => {
+    selectedModel.value = newModel.id;
+  });
+  eventBus.on('settingsUpdate', () => filterProviders())
+  await filterProviders()
 })
 
 watch(input, () => nextTick(() => autoResize()))
@@ -352,6 +375,25 @@ watch(isDialogsOpen, (val) => {
     sheetOpen.value = false
   }
 })
+
+async function filterProviders() {
+  filteredProviders.value = []
+
+  let filtered: Array<Provider> = []
+  for (let i=0; i<providers.length; i++) {
+    if (await getApiKey(providers[i].value)) {
+      filtered.push(providers[i])
+    }
+  }
+
+  filteredProviders.value = filtered
+}
+
+const filteredProviders = ref(providers)
+
+const getModelsByProvider = (provider: string) => {
+  return models.filter(model => model.provider === provider)
+}
 </script>
 
 <template>
@@ -374,11 +416,11 @@ watch(isDialogsOpen, (val) => {
     <div class="p-4 flex flex-col flex-1 min-w-1">
 
       <!-- Heading and settings button for large screens -->
-      <div class="hidden md:flex items-center justify-between mb-4 border-b dark:border-gray-700 pb-3">
+      <div class="hidden md:flex items-center justify-between border-b dark:border-gray-700 pb-3">
         <p class="text-lg font-semibold">
           {{ selectedDialogue?.title }}
         </p>
-        <Settings v-model:open="isSettingsOpen" />
+        <Settings v-model:open="isSettingsOpen"/>
       </div>
 
       <!-- Mobile menu -->
@@ -392,7 +434,7 @@ watch(isDialogsOpen, (val) => {
           @delete-all="openDeleteDialogs"/>
 
       <!-- List of messages -->
-      <div v-if="selectedDialogue" ref="messageListRef" class="flex-1 overflow-y-auto space-y-2 mb-2">
+      <div v-if="selectedDialogue" ref="messageListRef" class="flex-1 overflow-y-auto space-y-2">
         <MessageList
             :messages="selectedDialogue.messages"
             @edit-last-user-message="startEditingLastUserMessage"/>
@@ -402,6 +444,48 @@ watch(isDialogsOpen, (val) => {
       </div>
       <div v-else class="text-center text-gray-500 dark:text-gray-400">
         {{ t('no_dialogue_selected') }}
+      </div>
+
+      <div v-if="selectedDialogue" class="flex flex-row gap-1 text-sm text-gray-500 py-1">
+        <p>{{t('model')}}:</p>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger as-child>
+            <Button variant="ghost" class="px-1 py-0 h-auto">
+          <span class="underline decoration-dotted">
+            {{ selectedModel || t('select_model') }}
+          </span>
+            </Button>
+          </DropdownMenuTrigger>
+
+          <DropdownMenuContent class="w-48">
+            <DropdownMenuLabel>{{ t('select_model') }}</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+
+            <!-- Для каждого провайдера создаем подменю -->
+            <DropdownMenuSub
+                v-for="provider in filteredProviders"
+                :key="provider.value"
+            >
+              <DropdownMenuSubTrigger>
+                {{ provider.label }}
+              </DropdownMenuSubTrigger>
+
+              <DropdownMenuPortal>
+                <DropdownMenuSubContent>
+                  <!-- Модели для текущего провайдера -->
+                  <DropdownMenuItem
+                      v-for="model in getModelsByProvider(provider.value)"
+                      :key="model.id"
+                      @click="saveSelectedModel(model)"
+                  >
+                    {{ model.id }}
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuPortal>
+            </DropdownMenuSub>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <!-- Input and send button -->
@@ -422,7 +506,7 @@ watch(isDialogsOpen, (val) => {
             <Send/>
           </Button>
           <Button @click="cancelEditing" variant="ghost">
-            <X />
+            <X/>
           </Button>
         </div>
 

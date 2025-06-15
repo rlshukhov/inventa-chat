@@ -4,6 +4,8 @@
   "bot_typing": "...",
   "enter_message": "Введите сообщение...",
   "stop": "Стоп",
+  "model": "Модель",
+  "select_model": "Выберите модель",
 
   "copied": "Copied",
 
