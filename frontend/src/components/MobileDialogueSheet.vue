@@ -30,7 +30,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="flex md:hidden items-center justify-between w-full mb-4 border-b dark:border-gray-700 pb-3">
+  <div class="flex md:hidden items-center justify-between w-full border-b dark:border-gray-700 pb-3">
     <Sheet v-model:open="isSheetOpen">
       <SheetTrigger as-child>
         <Button variant="outline" size="icon" class="focus:ring-0 focus:outline-none">

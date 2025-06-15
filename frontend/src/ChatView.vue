@@ -397,7 +397,7 @@ const getModelsByProvider = (provider: string) => {
 </script>
 
 <template>
-  <div class="flex flex-row h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors">
+  <div class="flex flex-row h-full w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors">
 
     <!-- Sidebar for large screens -->
     <div class="hidden md:flex min-w-80 w-80">
