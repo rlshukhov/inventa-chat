@@ -1,11 +1,12 @@
 <!-- MessageBubble.vue -->
 <script setup lang="ts">
-import {nextTick, onMounted, ref, watch} from 'vue'
+import {ref} from 'vue'
 import Markdown from 'vue-markdown-render'
 import hljs from 'highlight.js'
 import copyButtonPlugin from '@/copyButtonPlugin.ts'
 import {useI18n} from 'vue-i18n'
 import {Copy, Pencil} from 'lucide-vue-next'
+import hrefPlugin from "@/hrefPlugin.ts";
 
 const isCopyIcon = ref(true)
 const {t} = useI18n()
@@ -39,42 +40,6 @@ function copyWholeMessage() {
     }, 1000)
   })
 }
-
-async function handleLinkClick(event: MouseEvent) {
-  const target = event.target as HTMLElement
-
-  if (target.tagName === 'A') {
-    const href = (target as HTMLAnchorElement).href
-
-    try {
-      const wails = await import('@wailsio/runtime')
-      await wails.Browser.OpenURL(href)
-      event.preventDefault()
-    } catch {
-      // do nothing (fallback for non-wails runtime)
-    }
-  }
-}
-
-onMounted(() => {
-  nextTick(enableExternalLinks)
-})
-
-watch(() => props.content, async () => {
-  await nextTick()
-  enableExternalLinks()
-})
-
-function enableExternalLinks() {
-  const container = document.querySelectorAll('.markdown')
-  container.forEach((el) => {
-    el.querySelectorAll('a').forEach((a) => {
-      a.addEventListener('click', handleLinkClick)
-      a.setAttribute('target', '_blank')
-      a.setAttribute('rel', 'noopener noreferrer')
-    })
-  })
-}
 </script>
 
 <template>
@@ -93,7 +58,7 @@ function enableExternalLinks() {
           <Markdown
               :source="props.content"
               :options="options"
-              :plugins="[copyButtonPlugin]"
+              :plugins="[copyButtonPlugin, hrefPlugin]"
               :class="[
             'markdown prose prose-sm dark:prose-invert',
             props.role === 'user' ? 'prose-invert text-white' : '',

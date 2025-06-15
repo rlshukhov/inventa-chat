@@ -5,6 +5,7 @@
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <title>Inventa Chat</title>
+    <script type="module" src="./runtime.js"></script>
 </head>
 <body>
 <script>
@@ -36,6 +37,18 @@
                 }
             }, 1000);
         });
+    }
+
+    window.hrefClick = (e) => {
+        const target = e.target
+        if (target.tagName === 'A') {
+            const href = target.href
+
+            if (window._wails.environment) {
+                e.preventDefault()
+                wails.Browser.OpenURL(href)
+            }
+        }
     }
 </script>
 <div id="app"></div>
