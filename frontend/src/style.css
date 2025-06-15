@@ -131,3 +131,14 @@ html, body {
   min-width: 150px;
   min-height: 40px;
 }
+
+.p-safe {
+  /*padding: 10px !important;*/
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left) !important;
+}
+
+.m-safe {
+  /*margin: 10px !important;*/
+  margin: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left) !important;
+}
+
