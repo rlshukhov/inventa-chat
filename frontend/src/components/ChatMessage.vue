@@ -67,7 +67,7 @@ function copyWholeMessage() {
 
       <!-- Buttons -->
       <div
-          class="mt-1 flex justify-start items-start space-y-1 opacity-0 group-hover:opacity-100 transition-opacity"
+          class="mt-1 flex justify-start items-start space-y-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
           :class="props.role === 'user' ? 'items-end' : 'items-start'">
         <button
             v-if="props.role === 'user'"
