@@ -384,7 +384,7 @@ const isSidebarOpenMobile = ref(false);
 </script>
 
 <template>
-  <div class="p-safe full">
+  <div class="full">
     <SidebarContent class="full">
       <SidebarProvider :open="isSidebarOpen" :open-mobile="isSidebarOpenMobile"
                        @update:openMobile="(v) => isSidebarOpenMobile = v">
@@ -429,7 +429,7 @@ const isSidebarOpenMobile = ref(false);
               {{ t('no_dialogue_selected') }}
             </p>
 
-            <div v-if="selectedDialogue" class="flex flex-col border-t translucent-border mb-2">
+            <div v-if="selectedDialogue" class="flex flex-col border-t translucent-border mb-2 mb-safe">
               <div class="w-full overflow-auto no-scrollbar">
                 <div class="flex flex-row gap-1 text-sm py-1 px-2">
                   <p>{{ t('model') }}:</p>
