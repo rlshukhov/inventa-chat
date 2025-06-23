@@ -402,10 +402,10 @@ const isSidebarOpenMobile = ref(false);
 
             <!-- Heading and settings button for large screens -->
             <div class="titlebar px-2 flex items-center justify-between border-b translucent-border pb-2">
-              <Button class="hidden md:flex" variant="ghost" size="icon" @click="isSidebarOpen=!isSidebarOpen">
+              <Button class="hidden md:flex" variant="link" size="icon" @click="isSidebarOpen=!isSidebarOpen">
                 <PanelLeft class="w-5 h-5"/>
               </Button>
-              <Button class="flex md:hidden" variant="ghost" size="icon" @click="isSidebarOpenMobile=!isSidebarOpenMobile">
+              <Button class="flex md:hidden" variant="link" size="icon" @click="isSidebarOpenMobile=!isSidebarOpenMobile">
                 <PanelLeft class="w-5 h-5"/>
               </Button>
               <p class="text-lg font-semibold flex-1 px-2">
