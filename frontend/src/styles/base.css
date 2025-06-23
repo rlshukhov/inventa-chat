@@ -217,3 +217,14 @@ html, body, #app, .full {
 .without-sidebar {
   max-width: calc(100vw - 16rem) !important; /* @see @/components/ui/sidebar/utils.ts */
 }
+
+.mermaid-placeholder {
+  width: 100%;
+  background-color: var(--tw-prose-pre-bg);
+  border-radius: calc(var(--radius) - 4px);
+  min-width: 150px;
+  min-height: 40px;
+  display: flex;
+  justify-content: center;
+  color: var(--tw-prose-pre-code);
+}

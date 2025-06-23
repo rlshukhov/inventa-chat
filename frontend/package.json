@@ -22,6 +22,7 @@
     "dexie": "^4.0.11",
     "highlight.js": "^11.11.1",
     "lucide-vue-next": "^0.488.0",
+    "mermaid": "^11.7.0",
     "mitt": "^3.0.1",
     "reka-ui": "^2.3.1",
     "tailwind-merge": "^3.2.0",
@@ -35,6 +36,7 @@
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.16",
+    "@types/markdown-it": "^14.1.2",
     "@types/node": "^22.14.1",
     "@typescript-eslint/eslint-plugin": "^8.34.1",
     "@typescript-eslint/parser": "^8.34.1",

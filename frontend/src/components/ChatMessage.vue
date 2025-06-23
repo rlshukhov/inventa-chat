@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {onBeforeMount, ref} from 'vue';
+import {createApp, nextTick, onBeforeMount, onMounted, ref, watch} from 'vue';
 import Markdown from 'vue-markdown-render';
 import hljs from 'highlight.js';
 import copyButtonPlugin from '@/plugins/markdown/copyButtonPlugin.ts';
@@ -8,6 +8,8 @@ import {Copy, Check} from 'lucide-vue-next';
 import hrefPlugin from "@/plugins/markdown/hrefPlugin.ts";
 import type {MessageRole} from "@/models/ai/messages.ts";
 import {getModelByUid} from "@/models/ai/providers.ts";
+import mermaidPlugin from '@/plugins/markdown/mermaidPlugin.ts';
+import MermaidDiagram from "@/components/MermaidDiagram.vue";
 
 const isCopyIcon = ref(true);
 const {t} = useI18n();
@@ -24,7 +26,6 @@ const props = defineProps<{
   isTyping?: boolean
 }>();
 
-// render markdown
 const options = {
   highlight: (str: string, lang: string) => {
     if (lang && hljs.getLanguage(lang)) {
@@ -51,6 +52,52 @@ onBeforeMount(() => {
     modelTitle.value = getModelByUid(props.modelUid)?.title || '';
   }
 });
+
+const contentRef = ref<HTMLElement>();
+
+const mountMermaidComponents = async () => {
+  await nextTick();
+
+  if (!contentRef.value) {
+    return;
+  }
+
+  const placeholders = contentRef.value.querySelectorAll('.mermaid-placeholder');
+
+  placeholders.forEach((placeholder) => {
+    const diagram = decodeURIComponent(placeholder.getAttribute('data-diagram') || '');
+    const id = placeholder.getAttribute('data-id');
+
+    if (diagram && id) {
+      const componentDiv = document.createElement('div');
+      componentDiv.id = `mermaid-${id}`;
+
+      placeholder.parentNode?.replaceChild(componentDiv, placeholder);
+
+      const app = createApp(MermaidDiagram, {
+        id: id,
+        chart: diagram,
+        theme: 'dark',
+      });
+
+      app.mount(`#mermaid-${id}`);
+    }
+  });
+};
+
+onMounted(() => {
+  if (!props.isTyping) {
+    void mountMermaidComponents();
+  }
+});
+
+watch(() => props.isTyping, () => {
+  void nextTick(() => {
+    if (!props.isTyping) {
+      void mountMermaidComponents();
+    }
+  });
+});
 </script>
 
 <template>
@@ -72,11 +119,11 @@ onBeforeMount(() => {
           </div>
         </button>
       </div>
-      <div class="content my-2">
+      <div ref="contentRef" class="content my-2">
         <Markdown
             :source="props.content"
             :options="options"
-            :plugins="[copyButtonPlugin, hrefPlugin]"
+            :plugins="[copyButtonPlugin, hrefPlugin, mermaidPlugin]"
             :class="[
             'flex-none markdown prose prose-sm dark:prose-invert prose-hr:border-dotted prose-hr:border-b-2 prose-hr:border-b-gray-400 max-w-none',
             props.role === 'user' ? '' : '',
@@ -89,19 +136,6 @@ onBeforeMount(() => {
           <div class="animate-pulse delay-900 w-2 h-2 rounded-full bg-gray-500 dark:bg-gray-300"></div>
         </div>
       </div>
-
-      <!-- Buttons -->
-      <!--      <div-->
-      <!--          class="mt-1 flex justify-start items-start space-y-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"-->
-      <!--          :class="props.role === 'user' ? 'items-end' : 'items-start'">-->
-      <!--        <button-->
-      <!--            v-if="props.role === 'user'"-->
-      <!--            @click="$emit('edit')"-->
-      <!--            class="mr-1 p-1 mt-2 rounded text-xs inline-flex items-center justify-center"-->
-      <!--            :class="{ 'invisible': !editable }">-->
-      <!--          <Pencil class="w-4 h-4"/>-->
-      <!--        </button>-->
-      <!--      </div>-->
     </div>
   </div>
 </template>

@@ -11,7 +11,6 @@ console.log('Target OS: ', import.meta.env.VITE_TARGET_OS);
 async function setup(): Promise<void> {
     await settings.loadSettings();
 
-    // language setting
     i18n.global.locale.value = settings.locale;
 
     const app = createApp(App);
@@ -19,7 +18,6 @@ async function setup(): Promise<void> {
 
     window.__t = (key: string) => i18n.global.t(key);
 
-    // change language
     watch(i18n.global.locale, (newLocale) => {
         window.__t = (key: string) => i18n.global.t(key);
         void settings.setLocale(newLocale);
