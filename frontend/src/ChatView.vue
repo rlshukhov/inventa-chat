@@ -1,40 +1,35 @@
 <script setup lang="ts">
-import {ref, nextTick, onMounted, watch, onBeforeUnmount} from 'vue'
-import MessageList from '@/components/MessageList.vue'
-import DeleteDialogueDialog from '@/components/DeleteDialogueDialog.vue'
-import RenameDialogueDialog from '@/components/RenameDialogueDialog.vue'
-import MobileDialogueSheet from '@/components/MobileDialogueSheet.vue'
-import {Textarea} from '@/components/ui/textarea'
-import {Send, X} from 'lucide-vue-next'
+import {ref, nextTick, onMounted, watch, onBeforeUnmount} from 'vue';
+import MessageList from '@/components/MessageList.vue';
+import DeleteDialogueDialog from '@/components/DeleteDialogueDialog.vue';
+import RenameDialogueDialog from '@/components/RenameDialogueDialog.vue';
+import {Textarea} from '@/components/ui/textarea';
+import {Pencil, Send, X, PanelLeft} from 'lucide-vue-next';
 import {Button} from "@/components/ui/button";
-import {db, getApiKey, getSelectedModel, saveSelectedModel} from '@/data/chatDatabase.ts';
-import {fetchResponseStream, type Model, type Provider} from '@/aiService.ts';
 import Settings from "@/components/Settings.vue";
-import type {ChatMessage, Dialogue} from '@/data/chatDatabase.ts';
-import {useI18n} from 'vue-i18n'
-import ConfirmDeleteDialogs from '@/components/ConfirmDeleteDialogs.vue'
+import {useI18n} from 'vue-i18n';
+import ConfirmDeleteDialogs from '@/components/ConfirmDeleteDialogs.vue';
 import {eventBus} from "@/eventBus.ts";
-import {providers, models} from "@/aiService.ts";
 
-const input = ref('')
-const isAwaiting = ref(false)
-const messageListRef = ref<HTMLDivElement | null>(null)
-const dialogueToDelete = ref<Dialogue | null>(null)
-const isRemoveConfirmOpen = ref(false)
-const renameModalOpen = ref(false)
-const dialogueToRename = ref<Dialogue | null>(null)
-const newDialogueTitle = ref('')
-const sheetOpen = ref(false)
-const isTyping = ref(false)
-const dialogues = ref<Dialogue[]>([])
-const selectedDialogue = ref<Dialogue | null>(null)
-const textareaRef = ref<HTMLTextAreaElement | null>(null)
-const isSettingsOpen = defineModel<boolean>('open')
-const {t} = useI18n()
-const abortController = ref<AbortController | null>(null)
-const editingLastUserMessage = ref(false)
-const editingContent = ref('')
-const isDialogsOpen = ref(false)
+const input = ref('');
+const isAwaiting = ref(false);
+const messageListRef = ref<HTMLDivElement | null>(null);
+const dialogueToDelete = ref<Dialogue | null>(null);
+const isRemoveConfirmOpen = ref(false);
+const renameModalOpen = ref(false);
+const dialogueToRename = ref<Dialogue | null>(null);
+const newDialogueTitle = ref('');
+const sheetOpen = ref(false);
+const dialogues = ref<Dialogue[]>([]);
+const selectedDialogue = ref<Dialogue | null>(null);
+const textareaRef = ref<HTMLTextAreaElement | null>(null);
+const isSettingsOpen = defineModel<boolean>('open');
+const {t} = useI18n();
+const abortController = ref<AbortController | null>(null);
+const editingLastUserMessage = ref(false);
+const editingContent = ref('');
+const isDialogsOpen = ref(false);
+const selectedModel = ref<Model | null>(null);
 
 import {
   DropdownMenu,
@@ -47,9 +42,17 @@ import {
   DropdownMenuSubContent,
   DropdownMenuPortal,
   DropdownMenuSubTrigger,
-} from '@/components/ui/dropdown-menu'
+} from '@/components/ui/dropdown-menu';
 import {SidebarContent, SidebarProvider} from "@/components/ui/sidebar";
 import DialogueSidebar from "@/DialogueSidebar.vue";
+import {streamChatCompletion} from "@/lib/services/ai.ts";
+import type {Dialogue} from "@/models/chats.ts";
+import {chatsStorage} from "@/lib/services/chats.ts";
+import {getModelByUid, type Provider, providers} from "@/models/ai/providers.ts";
+import type {Model} from "@/models/ai/models.ts";
+import type {Message} from "@/models/ai/messages.ts";
+import {settings} from "@/lib/services/settings.ts";
+import {useMediaQuery} from "@vueuse/core";
 
 const updateTheme = () => {
   const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -76,156 +79,113 @@ function handleScroll() {
 
 function setupScrollListener() {
   const container = messageListRef.value;
-  if (!container) return;
+  if (!container) {
+    return;
+  }
 
   container.addEventListener('scroll', handleScroll, {passive: true});
 }
 
 function isAtBottom(threshold = 150) {
   const container = messageListRef.value;
-  if (!container) return;
+  if (!container) {
+    return;
+  }
 
   return container.scrollTop + container.clientHeight >=
       container.scrollHeight - threshold;
 }
 
 function scrollToBottom(force: boolean = true) {
-  nextTick(() => {
-    if ((isUserScrolling || !isAtBottom()) && !force) return;
+  void nextTick(() => {
+    if ((isUserScrolling || !isAtBottom()) && !force) {
+      return;
+    }
 
     messageListRef.value?.scrollTo({
       top: messageListRef.value.scrollHeight,
       behavior: force ? 'smooth' : 'instant',
-    })
-  })
+    });
+  });
 }
 
 function handleEnter() {
-  if (editingLastUserMessage.value) {
-    confirmEditAndRegenerate();
-  } else {
-    sendMessage();
-  }
+  // if (editingLastUserMessage.value) {
+  //   void confirmEditAndRegenerate();
+  // } else {
+  void sendMessage();
+  // }
 }
 
 function startEditingLastUserMessage() {
   const lastIndex = selectedDialogue.value?.messages.findLastIndex(m => m.role === 'user');
-  if (lastIndex === -1 || lastIndex === undefined || isAwaiting.value) return
-
-  const content = selectedDialogue.value!.messages[lastIndex].content
-  input.value = content
-  editingContent.value = content
-  editingLastUserMessage.value = true
-}
-
-// editing message
-async function confirmEditAndRegenerate() {
-  const messages = selectedDialogue.value?.messages
-  if (!messages) return
-
-  const userIndex = messages.findLastIndex(m => m.role === 'user')
-  const assistantIndex = userIndex + 1
-
-  const userMessage = messages[userIndex];
-  userMessage.content = input.value;
-
-  if (userMessage.id) {
-    await db.messages.update(userMessage.id, {content: input.value});
+  if (lastIndex === -1 || lastIndex === undefined || isAwaiting.value) {
+    return;
   }
 
-  if (messages[assistantIndex]?.role === 'assistant') {
-    const deleted = messages.splice(assistantIndex, 1)[0];
-    if (deleted?.id) {
-      await db.messages.delete(deleted.id);
-    }
-  }
-
-  editingLastUserMessage.value = false;
-  input.value = ''
-  editingContent.value = '';
-  await sendMessage(true);
-}
-
-function cancelEditing() {
-  input.value = ''
-  editingLastUserMessage.value = false
-  editingContent.value = ''
+  const content = selectedDialogue.value!.messages[lastIndex].content;
+  input.value = content;
+  editingContent.value = content;
+  editingLastUserMessage.value = true;
 }
 
 function stopGeneration() {
-  abortController.value?.abort()
-  abortController.value = null
-  isAwaiting.value = false
-  isTyping.value = false
+  abortController.value?.abort();
+  abortController.value = null;
+  isAwaiting.value = false;
 }
 
-async function sendMessage(regenerating = false) {
+async function sendMessage() {
   abortController.value = new AbortController();
-  if ((input.value.trim().length === 0 && !regenerating) || !selectedDialogue.value || isAwaiting.value) return;
-
-  let userMessageContent = input.value.trim();
-  const currentDialogueId = selectedDialogue.value.id;
-
-  if (!regenerating) {
-    const userMessage: ChatMessage = {
-      dialogueId: currentDialogueId,
-      role: 'user',
-      content: userMessageContent,
-      timestamp: Date.now(),
-      model: null,
-    }
-
-    selectedDialogue.value.messages.push(userMessage);
-
-    await db.messages.add(userMessage);
+  if ((input.value.trim().length === 0) || !selectedDialogue.value || isAwaiting.value) {
+    return;
   }
 
-  if (!regenerating) input.value = '';
+  const userMessageContent = input.value.trim();
+  const currentDialogueId = selectedDialogue.value.id;
+
+  const userMessage = chatsStorage.createMessage(currentDialogueId, 'user', userMessageContent);
+  selectedDialogue.value.messages.push(userMessage);
+  await chatsStorage.storeMessage(userMessage);
+
+  input.value = '';
   isAwaiting.value = true;
-  isTyping.value = true;
   scrollToBottom();
 
-  const fullContext = [
-    {role: 'system', content: 'Ты полезный ассистент, помогаешь по программированию и другим вопросам.'},
+  const fullContext: Message[] = [
+    {
+      role: 'system',
+      content: 'Ты полезный ассистент, помогаешь по программированию и другим вопросам.',
+    },
     ...selectedDialogue.value.messages.map(m => ({
       role: m.role,
-      content: m.content
-    }))
+      content: m.content,
+    })),
   ];
 
   let fullContent = '';
-  let mdl = '';
+
+  selectedDialogue.value.messages.push(chatsStorage.createMessage(selectedDialogue.value.id, 'assistant', '', selectedModel.value?.uid, userMessage.id, true));
 
   try {
-    await fetchResponseStream(fullContext, (partial: string, model: Model) => {
+    await streamChatCompletion(selectedModel.value!, fullContext, (partial: string) => {
       fullContent = partial;
-      mdl = model.id
       if (selectedDialogue.value?.id === currentDialogueId) {
         const lastMessage = selectedDialogue.value.messages[selectedDialogue.value.messages.length - 1];
         if (lastMessage?.role === 'assistant') {
           lastMessage.content = partial;
-        } else {
-          selectedDialogue.value.messages.push({
-            id: undefined,
-            dialogueId: currentDialogueId,
-            role: 'assistant',
-            content: partial,
-            timestamp: Date.now(),
-            model: model.id,
-          });
         }
         scrollToBottom(false);
       }
     }, abortController.value);
 
+    const lastMessage = selectedDialogue.value.messages[selectedDialogue.value.messages.length - 1];
+    if (lastMessage?.role === 'assistant') {
+      lastMessage.isTyping = false;
+    }
+
     if (selectedDialogue.value && selectedDialogue.value.id === currentDialogueId) {
-      await db.messages.add({
-        dialogueId: currentDialogueId,
-        role: 'assistant',
-        content: fullContent,
-        timestamp: Date.now(),
-        model: mdl,
-      });
+      await chatsStorage.storeMessage(chatsStorage.createMessage(selectedDialogue.value.id, 'assistant', fullContent, selectedModel.value?.uid, userMessage.id));
     }
   } catch (e: unknown) {
     if (e instanceof Error && e.name !== 'AbortError') {
@@ -233,99 +193,102 @@ async function sendMessage(regenerating = false) {
     }
   }
   abortController.value = null;
-  isTyping.value = false;
   isAwaiting.value = false;
-  scrollToBottom();
-
-  if (regenerating) {
-    editingLastUserMessage.value = false;
-    editingContent.value = '';
-    input.value = '';
-  }
+  scrollToBottom(false);
 }
 
+const isMobile = useMediaQuery('(max-width: 768px)');
+
 async function selectDialogue(dialogue: Dialogue) {
-  selectedDialogue.value = dialogue
-  sheetOpen.value = false
-  isTyping.value = false
+  if (isMobile) {
+    isSidebarOpenMobile.value = false;
+  }
 
-  const storedMessages = await db.messages
-      .where('dialogueId')
-      .equals(dialogue.id)
-      .sortBy('timestamp')
+  selectedDialogue.value = dialogue;
+  sheetOpen.value = false;
 
-  selectedDialogue.value.messages = storedMessages.map(msg => ({
-    id: msg.id,
-    dialogueId: msg.dialogueId,
-    role: msg.role,
-    content: msg.content,
-    timestamp: msg.timestamp,
-    model: msg.model,
-  }));
+  selectedDialogue.value = await chatsStorage.getDialogueWithMessages(dialogue.id);
 
-  scrollToBottom()
+  scrollToBottom();
 
   await nextTick(() => {
     const textareaComponent = textareaRef.value as any;
     const textarea = textareaComponent?.textarea as HTMLTextAreaElement | undefined;
     textarea?.focus();
-  })
+  });
 }
 
 function confirmDeleteDialogue() {
-  if (!dialogueToDelete.value) return
-
-  dialogues.value = dialogues.value.filter(d => d.id !== dialogueToDelete.value!.id)
-
-  if (selectedDialogue.value?.id === dialogueToDelete.value.id) {
-    selectedDialogue.value = dialogues.value[0] || null
+  if (isMobile) {
+    isSidebarOpenMobile.value = false;
   }
 
-  db.dialogues.delete(dialogueToDelete.value.id)
-  db.messages.where('dialogueId').equals(dialogueToDelete.value.id).delete()
+  if (!dialogueToDelete.value) {
+    return;
+  }
 
-  dialogueToDelete.value = null
-  isRemoveConfirmOpen.value = false
-  scrollToBottom()
+  dialogues.value = dialogues.value.filter(d => d.id !== dialogueToDelete.value!.id);
+
+  if (selectedDialogue.value?.id === dialogueToDelete.value.id) {
+    selectedDialogue.value = dialogues.value[0] || null;
+  }
+
+  void chatsStorage.deleteDialogue(selectedDialogue.value!.id);
+
+  dialogueToDelete.value = null;
+  isRemoveConfirmOpen.value = false;
+  scrollToBottom();
 }
 
 function openRenameModal(dialogue: Dialogue) {
-  dialogueToRename.value = {...dialogue}
-  newDialogueTitle.value = dialogue.title
-  renameModalOpen.value = true
+  if (isMobile) {
+    isSidebarOpenMobile.value = false;
+  }
+
+  dialogueToRename.value = {...dialogue};
+  newDialogueTitle.value = dialogue.title;
+  renameModalOpen.value = true;
+}
+
+function openDeleteModal(dialogue: Dialogue) {
+  if (isMobile) {
+    isSidebarOpenMobile.value = false;
+  }
+
+  dialogueToDelete.value = dialogue;
+  isRemoveConfirmOpen.value = true;
 }
 
 async function confirmRenameDialogue() {
-  if (!dialogueToRename.value || newDialogueTitle.value.trim() === '') return
+  if (isMobile) {
+    isSidebarOpenMobile.value = false;
+  }
 
-  const newTitle = newDialogueTitle.value.trim()
+  if (!dialogueToRename.value || newDialogueTitle.value.trim() === '') {
+    return;
+  }
+
+  const newTitle = newDialogueTitle.value.trim();
 
   dialogues.value = dialogues.value.map(d =>
       d.id === dialogueToRename.value!.id
           ? {...d, title: newTitle}
-          : d
-  )
+          : d,
+  );
 
   if (selectedDialogue.value?.id === dialogueToRename.value.id) {
-    selectedDialogue.value = {...selectedDialogue.value, title: newTitle}
+    selectedDialogue.value = {...selectedDialogue.value, title: newTitle};
   }
 
-  await db.dialogues.update(dialogueToRename.value.id, {title: newTitle});
+  await chatsStorage.storeDialogue(selectedDialogue.value!);
 
-  renameModalOpen.value = false
-  dialogueToRename.value = null
+  renameModalOpen.value = false;
+  dialogueToRename.value = null;
 }
 
 async function createNewDialogue() {
-  const newDialogueId = Date.now().toString();
-
-  const newDialogue = {
-    id: newDialogueId,
-    title: t('new_dialogue', {n: dialogues.value.length + 1}),
-    messages: []
-  };
-
-  await db.dialogues.add({id: newDialogue.id, title: newDialogue.title});
+  const newDialogue = chatsStorage.createDialogue(t('new_dialogue', {n: dialogues.value.length + 1}));
+  await chatsStorage.storeDialogue(newDialogue);
 
   dialogues.value.unshift(newDialogue);
 
@@ -340,33 +303,31 @@ async function createNewDialogue() {
 }
 
 async function loadDialogues() {
-  const storedDialogues = await db.dialogues.toArray();
-
-  dialogues.value = storedDialogues.map(d => ({
-    id: d.id,
-    title: d.title,
-    messages: [] as ChatMessage[]
-  }));
-
+  dialogues.value = await chatsStorage.getDialogues() as Dialogue[];
   if (dialogues.value.length > 0) {
     await selectDialogue(dialogues.value[0]);
   }
 }
 
 function openDeleteDialogs() {
-  isDialogsOpen.value = true
+  if (isMobile) {
+    isSidebarOpenMobile.value = false;
+  }
+
+  isDialogsOpen.value = true;
 }
 
 async function onConfirmDelete() {
-  isDialogsOpen.value = false
+  if (isMobile) {
+    isSidebarOpenMobile.value = false;
+  }
 
-  await db.dialogues.clear()
-  await db.messages.clear()
-  dialogues.value = []
-  selectedDialogue.value = null
+  isDialogsOpen.value = false;
+
+  await chatsStorage.drop();
+  dialogues.value = [];
+  selectedDialogue.value = null;
 }
-
-const selectedModel = ref('')
 
 onBeforeUnmount(() => {
   const container = messageListRef.value;
@@ -377,205 +338,197 @@ onBeforeUnmount(() => {
 onMounted(async () => {
   setupScrollListener();
 
-  await loadDialogues()
-  const model = await getSelectedModel()
-  const apiKey = model ? await getApiKey(model.provider) : null
-
-  if (!apiKey) {
-    isSettingsOpen.value = true
+  const available = (await Promise.all(providers.map(p => p.isAvailable()))).some(Boolean);
+  if (!available) {
+    isSettingsOpen.value = true;
   }
+
+  await loadDialogues();
+  const model = getModelByUid(settings.lastUsedModelUid ?? '');
 
   if (model) {
-    selectedModel.value = model.id
+    selectedModel.value = model;
   }
-  eventBus.on('selectedModelUpdate', (newModel: Model) => {
-    selectedModel.value = newModel.id;
-  });
-  eventBus.on('settingsUpdate', () => filterProviders())
-  await filterProviders()
-})
+  // eslint-disable-next-line @typescript-eslint/no-misused-promises
+  eventBus.on('settingsUpdate', filterProviders);
+  await filterProviders();
+});
 
 watch(isDialogsOpen, (val) => {
   if (val) {
-    sheetOpen.value = false
+    sheetOpen.value = false;
   }
-})
+});
 
 async function filterProviders() {
-  filteredProviders.value = []
+  filteredProviders.value = [];
 
-  let filtered: Array<Provider> = []
-  for (let i = 0; i < providers.length; i++) {
-    if (await getApiKey(providers[i].value)) {
-      filtered.push(providers[i])
+  const filtered: Array<Provider> = [];
+  for (const provider of providers) {
+    if (await provider.isAvailable()) {
+      filtered.push(provider);
     }
   }
 
-  filteredProviders.value = filtered
+  filteredProviders.value = filtered;
 }
 
-const filteredProviders = ref(providers)
+const filteredProviders = ref(providers);
 
-const getModelsByProvider = (provider: string) => {
-  return models.filter(model => model.provider === provider)
-}
+const getModelsByProvider = (providerId: string) => {
+  return filteredProviders.value.filter(provider => provider.id === providerId)[0].models;
+};
+
+const isSidebarOpen = ref(true);
+const isSidebarOpenMobile = ref(false);
 </script>
 
 <template>
-  <div
-      class="flex flex-row p-safe h-full w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors">
-
-    <!-- Sidebar for large screens -->
+  <div class="p-safe w-screen h-screen max-w-screen max-h-screen">
     <SidebarContent>
-      <SidebarProvider>
+      <SidebarProvider :open="isSidebarOpen" :open-mobile="isSidebarOpenMobile" @update:openMobile="(v) => isSidebarOpenMobile = v">
         <DialogueSidebar
             :dialogues="dialogues"
             :selectedId="selectedDialogue?.id || null"
             @select="selectDialogue"
             @create="createNewDialogue"
-            @delete="dialogue => { dialogueToDelete = dialogue; isRemoveConfirmOpen = true }"
+            @delete="openDeleteModal"
             @rename="openRenameModal"
             @delete-all="openDeleteDialogs"
         />
-        <main class="w-full min-w-1">
+        <main class="h-full w-full max-w-full max-h-full transition-max-w" :class="{'md:max-w-[calc(100vw-var(--sidebar-width))]': isSidebarOpen}">
           <!-- Main content -->
-          <div class="p-4 flex flex-col w-full h-full min-w-1">
+          <div class="flex flex-col w-full h-screen max-h-screen">
 
             <!-- Heading and settings button for large screens -->
-            <div class="hidden md:flex items-center justify-between border-b dark:border-gray-700 pb-3">
-              <p class="text-lg font-semibold">
+            <div class="titlebar px-2 flex items-center justify-between border-b translucent-border pb-2">
+              <Button class="hidden md:flex" variant="ghost" size="icon" @click="isSidebarOpen=!isSidebarOpen">
+                <PanelLeft class="w-5 h-5"/>
+              </Button>
+              <Button class="flex md:hidden" variant="ghost" size="icon" @click="isSidebarOpenMobile=!isSidebarOpenMobile">
+                <PanelLeft class="w-5 h-5"/>
+              </Button>
+              <p class="text-lg font-semibold flex-1 px-2">
                 {{ selectedDialogue?.title }}
               </p>
+              <Button variant="ghost" size="icon" @click="createNewDialogue" class="mr-2">
+                <Pencil class="w-5 h-5"/>
+              </Button>
               <Settings v-model:open="isSettingsOpen"/>
             </div>
 
-            <!-- Mobile menu -->
-            <MobileDialogueSheet
-                :dialogues="dialogues"
-                :selectedId="selectedDialogue?.id || null"
-                @select="selectDialogue"
-                @create="createNewDialogue"
-                @delete="dialogue => { dialogueToDelete = dialogue; isRemoveConfirmOpen = true }"
-                @rename="openRenameModal"
-                @delete-all="openDeleteDialogs"/>
-
             <!-- List of messages -->
-            <div v-if="selectedDialogue" ref="messageListRef" class="flex-1 overflow-y-auto space-y-2">
-              <MessageList
-                  :messages="selectedDialogue.messages"
-                  @edit-last-user-message="startEditingLastUserMessage"/>
-              <div v-if="isTyping" class="p-1 text-gray-500">
-                {{ t('bot_typing') }}
-              </div>
+            <div v-if="selectedDialogue" ref="messageListRef" class="flex-grow overflow-auto px-2">
+              <MessageList :messages="selectedDialogue.messages"
+                           @edit-last-user-message="startEditingLastUserMessage"/>
             </div>
-            <div v-else class="text-center text-gray-500 dark:text-gray-400">
+            <p v-else class="text-center my-auto">
               {{ t('no_dialogue_selected') }}
-            </div>
+            </p>
 
-            <div v-if="selectedDialogue" class="flex flex-row gap-1 text-sm text-gray-500 py-1">
-              <p>{{ t('model') }}:</p>
+            <div class="flex flex-col border-t translucent-border mb-2">
+              <div class="w-full overflow-auto no-scrollbar">
+                <div v-if="selectedDialogue" class="flex flex-row gap-1 text-sm py-1 px-2">
+                  <p>{{ t('model') }}:</p>
 
-              <DropdownMenu>
-                <DropdownMenuTrigger as-child>
-                  <Button variant="ghost" class="px-1 py-0 h-auto">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger as-child>
+                      <Button variant="ghost" class="px-1 py-0 h-auto">
                     <span class="underline decoration-dotted">
-                      {{ selectedModel || t('select_model') }}
+                      {{ selectedModel?.title || t('select_model') }}
                     </span>
-                  </Button>
-                </DropdownMenuTrigger>
+                      </Button>
+                    </DropdownMenuTrigger>
 
-                <DropdownMenuContent class="w-48">
-                  <DropdownMenuLabel>{{ t('select_model') }}</DropdownMenuLabel>
-                  <DropdownMenuSeparator/>
+                    <DropdownMenuContent class="w-48">
+                      <DropdownMenuLabel>{{ t('select_model') }}</DropdownMenuLabel>
+                      <DropdownMenuSeparator/>
+                      <DropdownMenuSub
+                          v-for="provider in filteredProviders"
+                          :key="provider.id"
+                      >
+                        <DropdownMenuSubTrigger>
+                          {{ provider.title }}
+                        </DropdownMenuSubTrigger>
 
-                  <!-- Для каждого провайдера создаем подменю -->
-                  <DropdownMenuSub
-                      v-for="provider in filteredProviders"
-                      :key="provider.value"
-                  >
-                    <DropdownMenuSubTrigger>
-                      {{ provider.label }}
-                    </DropdownMenuSubTrigger>
-
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent>
-                        <!-- Модели для текущего провайдера -->
-                        <DropdownMenuItem
-                            v-for="model in getModelsByProvider(provider.value)"
-                            :key="model.id"
-                            @click="saveSelectedModel(model)"
-                        >
-                          {{ model.id }}
-                        </DropdownMenuItem>
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-            <!-- Input and send button -->
-            <div v-if="selectedDialogue" class="flex items-end w-full space-x-2 mt-auto">
-        <Textarea
-            v-model="input"
-            ref="textareaRef"
-            :placeholder="t('enter_message')"
-            class="flex-1 p-2 rounded border dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[4rem] resize-none"
-            @keydown.enter.exact.prevent="handleEnter"/>
-
-              <!-- Buttons -->
-              <div v-if="editingLastUserMessage">
-                <Button :disabled="input.length === 0"
-                        @click="confirmEditAndRegenerate"
-                        variant="ghost">
-                  <Send/>
-                </Button>
-                <Button @click="cancelEditing" variant="ghost">
-                  <X/>
-                </Button>
+                        <DropdownMenuPortal>
+                          <DropdownMenuSubContent>
+                            <DropdownMenuItem
+                                v-for="model in getModelsByProvider(provider.id)"
+                                :key="model.id"
+                                @click="selectedModel=model"
+                            >
+                              {{ model.id }}
+                            </DropdownMenuItem>
+                          </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                      </DropdownMenuSub>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
 
-              <Button
-                  v-else-if="!isAwaiting"
-                  :disabled="input.length === 0"
-                  @click="handleEnter"
-                  class="flex items-center justify-center h-full"
-                  variant="ghost">
-                <Send/>
-              </Button>
+              <!-- Input and send button -->
+              <div v-if="selectedDialogue" class="flex items-end">
+              <Textarea
+                  v-model="input"
+                  ref="textareaRef"
+                  :placeholder="t('enter_message')"
+                  class="flex-1 focus:outline-none min-h-[4rem] resize-none"
+                  :disabled="isAwaiting"
+                  @keydown.enter.exact.prevent="handleEnter"
+              />
 
-              <Button
-                  v-if="isAwaiting"
-                  @click="stopGeneration"
-                  class="h-full"
-                  variant="destructive">
-                {{ t('stop') }}
-              </Button>
+                <!-- Buttons -->
+                <!--              <div v-if="editingLastUserMessage">-->
+                <!--                <Button :disabled="input.length === 0"-->
+                <!--                        @click="confirmEditAndRegenerate"-->
+                <!--                        variant="ghost">-->
+                <!--                  <Send/>-->
+                <!--                </Button>-->
+                <!--                <Button @click="cancelEditing" variant="ghost">-->
+                <!--                  <X/>-->
+                <!--                </Button>-->
+                <!--              </div>-->
+
+                <Button
+                    v-if="!isAwaiting"
+                    :disabled="input.length === 0"
+                    @click="handleEnter"
+                    class="flex items-center justify-center h-full mr-2"
+                    variant="ghost">
+                  <Send class="!w-5 !h-5"/>
+                </Button>
+
+                <Button
+                    v-if="isAwaiting"
+                    @click="stopGeneration"
+                    class="flex items-center justify-center h-full mr-2"
+                    variant="ghost">
+                  <X color="red" class="!w-5 !h-5"></X>
+                </Button>
+              </div>
             </div>
-
-            <!-- Delete modal -->
-            <DeleteDialogueDialog
-                :open="isRemoveConfirmOpen"
-                :dialogue="dialogueToDelete"
-                @update:open="isRemoveConfirmOpen = $event"
-                @confirm="confirmDeleteDialogue"/>
-
-            <!-- Rename modal -->
-            <RenameDialogueDialog
-                :open="renameModalOpen"
-                :title="newDialogueTitle"
-                @update:open="renameModalOpen = $event"
-                @confirm="title => { newDialogueTitle = title; confirmRenameDialogue() }"/>
-
-            <ConfirmDeleteDialogs
-                :open="isDialogsOpen"
-                :dialogue="{ title: t('all-dialog') }"
-                @update:open="val => isDialogsOpen = val"
-                @confirm="onConfirmDelete"
-            />
           </div>
         </main>
       </SidebarProvider>
     </SidebarContent>
+
+    <DeleteDialogueDialog
+        :open="isRemoveConfirmOpen"
+        :dialogue="dialogueToDelete"
+        @update:open="isRemoveConfirmOpen = $event"
+        @confirm="confirmDeleteDialogue"/>
+    <RenameDialogueDialog
+        :open="renameModalOpen"
+        :title="newDialogueTitle"
+        @update:open="renameModalOpen = $event"
+        @confirm="title => { newDialogueTitle = title; confirmRenameDialogue() }"/>
+    <ConfirmDeleteDialogs
+        :open="isDialogsOpen"
+        :dialogue="{ title: t('all-dialog') }"
+        @update:open="val => isDialogsOpen = val"
+        @confirm="onConfirmDelete"
+    />
   </div>
 </template>

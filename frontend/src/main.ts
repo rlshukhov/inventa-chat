@@ -1,29 +1,38 @@
-import { createApp, watch } from 'vue'
-import './style.css'
-import App from './ChatView.vue'
-import { i18n } from './i18n'
-import 'highlight.js/styles/monokai-sublime.min.css'
-import { getLocale, saveLocale } from './data/chatDatabase.ts'
+import {createApp, watch} from 'vue';
+import './styles/base.css';
+import App from './ChatView.vue';
+import {i18n} from './locales/i18n.ts';
+import 'highlight.js/styles/github-dark.min.css';
+import {settings} from "@/lib/services/settings.ts";
+import {targetOS} from "@/lib/services/target.ts";
 
-async function setup() {
+console.log('Target OS: ', import.meta.env.VITE_TARGET_OS);
+
+async function setup(): Promise<void> {
+    await settings.loadSettings();
+
     // language setting
-    i18n.global.locale.value = await getLocale()
+    i18n.global.locale.value = settings.locale;
 
-    const app = createApp(App)
-    app.use(i18n)
+    const app = createApp(App);
+    app.use(i18n);
 
-    window.__t = (key: string) => i18n.global.t(key)
+    window.__t = (key: string) => i18n.global.t(key);
 
     // change language
-    watch(i18n.global.locale, async (newLocale) => {
-        window.__t = (key: string) => i18n.global.t(key)
-        await saveLocale(newLocale)
-    })
+    watch(i18n.global.locale, (newLocale) => {
+        window.__t = (key: string) => i18n.global.t(key);
+        void settings.setLocale(newLocale);
+    });
 
-    app.mount('#app')
+    app.mount('#app');
 }
 
-(async () => {
-    await setup();
-})();
+await setup();
+
+if (targetOS === "darwin") {
+    await import('./styles/darwin.css');
+}
+
+document.documentElement.classList.add(targetOS);
 

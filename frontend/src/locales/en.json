@@ -1,4 +1,5 @@
 {
+  "user": "User",
   "new_dialogue": "New dialogue {n}",
   "no_dialogue_selected": "No dialogue selected.",
   "bot_typing": "...",

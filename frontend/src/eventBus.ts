@@ -1,9 +1,9 @@
 import mitt from 'mitt';
-import type {Model} from "@/aiService.ts";
+import type {Model} from "@/models/ai/models.ts";
 
 type Events = {
-    selectedModelUpdate: Model;
     settingsUpdate: null
+    aiModelUsed: Model
 };
 
 export const eventBus = mitt<Events>();

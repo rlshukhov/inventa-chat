@@ -1,30 +1,30 @@
 <script setup lang="ts">
-import {AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle} from '@/components/ui/alert-dialog'
-import { watch, onBeforeUnmount } from 'vue'
-import { useI18n } from 'vue-i18n'
+import {AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle} from '@/components/ui/alert-dialog';
+import { watch, onBeforeUnmount } from 'vue';
+import { useI18n } from 'vue-i18n';
 
-const { t } = useI18n()
+const { t } = useI18n();
 
-const props = defineProps<{ open: boolean, dialogue: { title: string } | null }>()
-const emit = defineEmits(['update:open', 'confirm'])
+const props = defineProps<{ open: boolean, dialogue: { title: string } | null }>();
+const emit = defineEmits(['update:open', 'confirm']);
 
 function onKeydown(event: KeyboardEvent) {
   if (event.key === 'Enter' && props.open) {
-    emit('confirm')
+    emit('confirm');
   }
 }
 
 watch(() => props.open, (newVal) => {
   if (newVal) {
-    window.addEventListener('keydown', onKeydown)
+    window.addEventListener('keydown', onKeydown);
   } else {
-    window.removeEventListener('keydown', onKeydown)
+    window.removeEventListener('keydown', onKeydown);
   }
-})
+});
 
 onBeforeUnmount(() => {
-  window.removeEventListener('keydown', onKeydown)
-})
+  window.removeEventListener('keydown', onKeydown);
+});
 </script>
 
 <template>

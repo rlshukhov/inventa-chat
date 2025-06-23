@@ -1,25 +1,31 @@
 <script setup lang="ts">
 import { useEventListener, useMediaQuery, useVModel } from '@vueuse/core'
 import { TooltipProvider } from 'reka-ui'
-import { computed, type HTMLAttributes, type Ref, ref } from 'vue'
+import { computed, type HTMLAttributes, type Ref } from 'vue'
 import { cn } from '@/lib/utils'
 import { provideSidebarContext, SIDEBAR_COOKIE_MAX_AGE, SIDEBAR_COOKIE_NAME, SIDEBAR_KEYBOARD_SHORTCUT, SIDEBAR_WIDTH, SIDEBAR_WIDTH_ICON } from './utils'
 
 const props = withDefaults(defineProps<{
   defaultOpen?: boolean
   open?: boolean
-  class?: HTMLAttributes['class']
+  class?: HTMLAttributes['class'],
+  openMobile?: boolean
 }>(), {
   defaultOpen: true,
   open: undefined,
+  openMobile: false,
 })
 
 const emits = defineEmits<{
   'update:open': [open: boolean]
+  'update:openMobile': [openMobile: boolean]
 }>()
 
 const isMobile = useMediaQuery('(max-width: 768px)')
-const openMobile = ref(false)
+const openMobile = useVModel(props, 'openMobile', emits, {
+  defaultValue: props.defaultOpen ?? false,
+  passive: (props.openMobile === undefined) as false,
+}) as Ref<boolean>
 
 const open = useVModel(props, 'open', emits, {
   defaultValue: props.defaultOpen ?? false,
@@ -34,6 +40,7 @@ function setOpen(value: boolean) {
 }
 
 function setOpenMobile(value: boolean) {
+  emits('update:openMobile', value)
   openMobile.value = value
 }
 

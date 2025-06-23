@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, reactive, onMounted } from 'vue'
+import {ref, computed, reactive, onMounted} from 'vue';
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -7,113 +7,97 @@ import {
   AlertDialogHeader,
   AlertDialogFooter,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Settings2, Globe } from 'lucide-vue-next'
-import {saveApiKey, saveLocale, getLocale, getApiKey} from '@/data/chatDatabase.ts'
-import type { Locale} from '@/data/chatDatabase.ts'
-import { useI18n } from 'vue-i18n'
-import {providers, type ProviderRaw} from "@/aiService.ts";
+} from '@/components/ui/alert-dialog';
+import {Button} from '@/components/ui/button';
+import {Input} from '@/components/ui/input';
+import {Settings2, Globe} from 'lucide-vue-next';
+import {useI18n} from 'vue-i18n';
 import {eventBus} from "@/eventBus.ts";
+import {Provider, type ProviderID, providerIds, providers} from "@/models/ai/providers.ts";
+import {settings} from "@/lib/services/settings.ts";
+import type {Language} from "@/models/settings.ts";
 
-const { t, locale } = useI18n()
-const open = defineModel<boolean>('open')
-const errorMessage = ref<string | null>(null)
-const isSaving = ref(false)
+const {t, locale} = useI18n();
+const open = defineModel<boolean>('open');
+const errorMessage = ref<string | null>(null);
+const isSaving = ref(false);
 
 const isValid = computed(() => {
-  return apiKeys.gpt || apiKeys.deepseek || apiKeys.perplexity;
-})
+  for (const i in apiKeys) {
+    if (apiKeys[i as ProviderID]) {
+      return true;
+    }
+  }
 
-const apiKeys = reactive<Record<ProviderRaw, string>>({
-  gpt: '',
-  deepseek: '',
-  perplexity: '',
-})
+  return false;
+});
+
+const apiKeys = reactive<Record<ProviderID, string>>({
+  ...providerIds.reduce((acc, id) => {
+    acc[id] = '';
+    return acc;
+  }, {} as Record<ProviderID, string>),
+});
 
 async function saveSettings() {
-  if (!isValid.value) return
+  if (!isValid.value) {
+    return;
+  }
 
-  errorMessage.value = null
-  isSaving.value = true
+  errorMessage.value = null;
+  isSaving.value = true;
 
-  for (let i=0; i < providers.length; i++) {
-    const provider = providers[i].value
-    const apiKey = apiKeys[provider]
+  for (const provider of providers) {
+    const apiKey = apiKeys[provider.id];
     if (!apiKey) {
-      continue
+      continue;
     }
 
-    const isKeyValid = await validateApiKey(provider, apiKey)
+    const isKeyValid = await validateApiKey(provider, apiKey);
 
     if (!isKeyValid) {
-      errorMessage.value = t('settings.invalid_api_key') || 'API key is invalid'
-      isSaving.value = false
-      return
+      errorMessage.value = t('settings.invalid_api_key') || 'API key is invalid';
+      isSaving.value = false;
+      return;
     }
   }
 
-  for (let i=0; i < providers.length; i++) {
-    const provider = providers[i].value
-    await saveApiKey(provider, apiKeys[provider])
+  for (const provider of providers) {
+    await provider.storage.set('bearer-token', apiKeys[provider.id]);
   }
 
-  eventBus.emit("settingsUpdate", null)
+  eventBus.emit("settingsUpdate", null);
 
-  isSaving.value = false
-  open.value = false
+  isSaving.value = false;
+  open.value = false;
 }
 
-async function validateApiKey(provider: ProviderRaw, apiKey: string): Promise<boolean> {
+async function validateApiKey(provider: Provider, apiKey: string): Promise<boolean> {
   try {
-    let response: Response
-
-    if (provider === 'gpt') {
-      response = await fetch('https://api.openai.com/v1/models', {
-        headers: {
-          Authorization: `Bearer ${apiKey}`
-        }
-      })
-    } else if (provider === 'deepseek') {
-      response = await fetch('https://api.deepseek.com/v1/models', {
-        headers: {
-          Authorization: `Bearer ${apiKey}`
-        }
-      })
-    } else if (provider === 'perplexity') {
-      response = await fetch('https://api.perplexity.ai/async/chat/completions', {
-        headers: {
-          Authorization: `Bearer ${apiKey}`
-        }
-      })
-    } else {
-      return false
-    }
-
-    return response.ok
+    const response = await fetch(`${provider.api.baseURL}${provider.api.availabilityCheckUrl}`, {
+      headers: await provider.api.buildHeaders({'bearer-token': apiKey}),
+    });
+    return response.ok;
   } catch (e) {
-    console.error('API key validation error:', e)
-    return false
+    console.error('API key validation error:', e);
+    return false;
   }
 }
 
-// load settings on mount
 onMounted(async () => {
-  const savedLocale = await getLocale()
+  const savedLocale = settings.locale;
   if (savedLocale && ['en', 'ru'].includes(savedLocale)) {
-    locale.value = savedLocale as 'en' | 'ru'
+    locale.value = savedLocale;
   }
 
-  for (let i=0; i < providers.length; i++) {
-    const provider = providers[i].value
-    apiKeys[provider] = await getApiKey(provider)
+  for (const provider of providers) {
+    apiKeys[provider.id] = await provider.storage.get('bearer-token') || '';
   }
 });
 
 async function toggleLocale() {
-  locale.value = locale.value === 'en' ? 'ru' : 'en'
-  await saveLocale(locale.value as Locale)
+  locale.value = locale.value === 'en' ? 'ru' : 'en';
+  await settings.setLocale(locale.value as Language);
 }
 </script>
 
@@ -121,35 +105,24 @@ async function toggleLocale() {
   <AlertDialog v-model:open="open">
     <!-- Mobile button -->
     <AlertDialogTrigger as-child>
-      <Button variant="ghost" class="md:hidden">
-        <Settings2 class="w-4 h-4" />
+      <Button variant="ghost">
+        <Settings2 class="w-4 h-4"/>
       </Button>
     </AlertDialogTrigger>
 
-    <!-- Desktop button -->
-    <AlertDialogTrigger as-child>
-      <Button variant="outline" class="hidden md:flex">
-        <Settings2 class="mr-2 w-4 h-4" />
-        {{ t('settings.button') }}
-      </Button>
-    </AlertDialogTrigger>
-
-    <AlertDialogContent
-        class="sm:max-w-[500px]"
-
-    >
+    <AlertDialogContent class="sm:max-w-[500px]">
       <AlertDialogHeader>
         <AlertDialogTitle>{{ t('settings.title') }}</AlertDialogTitle>
       </AlertDialogHeader>
 
       <div class="grid gap-4 py-4">
         <!-- API Key -->
-        <div class="space-y-1" v-for="provider in providers">
+        <div class="space-y-1" v-for="provider in providers" v-bind:key="provider.id">
           <label class="text-sm font-medium">
-            {{ t('settings.api_key_label', { provider: provider.label }) }}
+            {{ t('settings.api_key_label', {provider: provider.title}) }}
           </label>
           <Input
-              v-model="apiKeys[provider.value]"
+              v-model="apiKeys[provider.id]"
               :placeholder="t('settings.api_key_placeholder')"
               type="password"
           />
@@ -157,7 +130,7 @@ async function toggleLocale() {
 
         <!-- Language selection -->
         <Button @click="toggleLocale" variant="secondary">
-          <Globe class="w-4 h-4" />
+          <Globe class="w-4 h-4"/>
           {{ locale === 'en' ? 'Русский' : 'English' }}
         </Button>
 

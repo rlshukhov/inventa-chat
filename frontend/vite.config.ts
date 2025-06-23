@@ -1,8 +1,8 @@
-import path from 'node:path'
-import vue from '@vitejs/plugin-vue'
-import tailwindcss from '@tailwindcss/vite'
+import path from 'node:path';
+import vue from '@vitejs/plugin-vue';
+import tailwindcss from '@tailwindcss/vite';
 
-import {defineConfig} from 'vite'
+import {defineConfig} from 'vite';
 import {VitePWA} from "vite-plugin-pwa";
 
 export default defineConfig({
@@ -27,6 +27,12 @@ export default defineConfig({
                     },
                 ],
             },
+            workbox: {
+                maximumFileSizeToCacheInBytes: 5000000,
+            },
+            injectManifest: {
+                maximumFileSizeToCacheInBytes: 5000000,
+            },
         }),
     ],
     base: './', // assets relative path
@@ -35,4 +41,7 @@ export default defineConfig({
             '@': path.resolve(__dirname, './src'),
         },
     },
-})
+    build: {
+        target: 'es2022',
+    },
+});

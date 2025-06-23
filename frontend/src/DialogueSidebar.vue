@@ -2,22 +2,21 @@
 import {
   Sidebar,
   SidebarContent,
-  SidebarRail
 } from "@/components/ui/sidebar";
 import DialogueList from "@/components/DialogueList.vue";
 
 const props = defineProps<{
   dialogues: { id: string, title: string }[],
   selectedId: string | null
-}>()
+}>();
 
-const emit = defineEmits(['update:open', 'select', 'delete', 'rename', 'create', 'delete-all'])
+const emit = defineEmits(['update:open', 'select', 'delete', 'rename', 'create', 'delete-all']);
 
 </script>
 
 <template>
   <Sidebar>
-    <SidebarContent>
+    <SidebarContent class="bg-background md:bg-transparent">
       <DialogueList
           :dialogues="props.dialogues"
           :selectedId="props.selectedId"
@@ -28,6 +27,5 @@ const emit = defineEmits(['update:open', 'select', 'delete', 'rename', 'create',
           @delete-all="dialogue => emit('delete-all', dialogue)"
       />
     </SidebarContent>
-    <SidebarRail />
   </Sidebar>
 </template>

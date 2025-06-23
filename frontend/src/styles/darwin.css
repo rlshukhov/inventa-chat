@@ -1,0 +1,13 @@
+.titlebar {
+    padding-top: calc(30px - 8px) !important;
+}
+
+@layer base {
+    :root {
+        --bot-message-bg-color: rgba(255,255,255,0.5);
+    }
+
+    .dark {
+        --bot-message-bg-color: rgba(0,0,0,0.5);
+    }
+}

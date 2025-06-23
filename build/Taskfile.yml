@@ -35,6 +35,7 @@ tasks:
       - npm run {{.BUILD_COMMAND}} -q
     env:
       PRODUCTION: '{{.PRODUCTION | default "false"}}'
+      VITE_TARGET_OS: '{{OS}}'
     vars:
       BUILD_COMMAND: '{{if eq .PRODUCTION "true"}}build{{else}}build:dev{{end}}'
 
@@ -70,6 +71,8 @@ tasks:
       - task: install:frontend:deps
     cmds:
       - npm run dev -- --port {{.VITE_PORT}} --strictPort
+    env:
+      VITE_TARGET_OS: '{{OS}}'
 
   update:build-assets:
     summary: Updates the build assets

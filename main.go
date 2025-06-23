@@ -25,8 +25,9 @@ func main() {
 	app.NewWebviewWindowWithOptions(application.WebviewWindowOptions{
 		Title: "Inventa Chat",
 		Mac: application.MacWindow{
-			Backdrop: application.MacBackdropNormal,
-			TitleBar: application.MacTitleBarDefault,
+			Backdrop:                application.MacBackdropTranslucent,
+			TitleBar:                application.MacTitleBarHidden,
+			InvisibleTitleBarHeight: 30,
 		},
 		Width:  1200,
 		Height: 800,

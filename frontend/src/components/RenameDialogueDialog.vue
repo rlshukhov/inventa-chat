@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { watch, ref } from 'vue'
+import { watch, ref } from 'vue';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -8,32 +8,32 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogCancel,
-  AlertDialogAction
-} from '@/components/ui/alert-dialog'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { useI18n } from 'vue-i18n'
+  AlertDialogAction,
+} from '@/components/ui/alert-dialog';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { useI18n } from 'vue-i18n';
 
-const { t } = useI18n()
+const { t } = useI18n();
 
 const props = defineProps<{
   open: boolean,
   title: string
-}>()
+}>();
 
-const emit = defineEmits(['update:open', 'confirm'])
+const emit = defineEmits(['update:open', 'confirm']);
 
-const localTitle = ref('')
+const localTitle = ref('');
 
 watch(() => props.open, (newVal) => {
   if (newVal) {
-    localTitle.value = props.title
+    localTitle.value = props.title;
   }
-})
+});
 
 function onKeydown(event: KeyboardEvent) {
   if (event.key === 'Enter' && localTitle.value.trim().length > 0) {
-    emit('confirm', localTitle.value.trim())
+    emit('confirm', localTitle.value.trim());
   }
 }
 </script>

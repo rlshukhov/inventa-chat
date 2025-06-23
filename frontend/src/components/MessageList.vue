@@ -1,29 +1,34 @@
 <script setup lang="ts">
-import ChatMessage from './ChatMessage.vue'
+import ChatMessage from './ChatMessage.vue';
+import type {MessageRole} from "@/models/ai/messages.ts";
 import {computed} from "vue";
 const props = defineProps<{
-  messages: { role: 'user' | 'assistant', content: string, model: string | null }[]
-}>()
+  messages: {
+    id: string,
+    role: MessageRole,
+    content: string,
+    modelUid?: string | undefined,
+    timestamp: number,
+    isTyping: boolean,
+  }[],
+}>();
 
-const emit = defineEmits(['edit-last-user-message'])
+defineEmits(['edit-last-user-message']);
 
-const lastUserMessageIndex = computed(() => {
-  for (let i = props.messages.length - 1; i >= 0; i--) {
-    if (props.messages[i].role === 'user') return i
-  }
-  return -1
-})
+const sortedMessages = computed(() =>
+    [...props.messages].sort((a, b) => a.timestamp - b.timestamp),
+);
 </script>
 
 <template>
-  <div class="flex-1 overflow-y-auto space-y-2">
+  <div class="flex-1 overflow-y-auto space-y-2 mx-auto w-fit max-w-full">
     <ChatMessage
-        v-for="(message, index) in messages"
-        :key="index"
+        v-for="message in sortedMessages"
+        :key="message.id"
         :content="message.content"
         :role="message.role"
-        :model="message.model"
-        :editable="index === lastUserMessageIndex"
+        :modelUid="message.modelUid"
+        :is-typing="message.isTyping"
         @edit="() => $emit('edit-last-user-message')"
     />
   </div>

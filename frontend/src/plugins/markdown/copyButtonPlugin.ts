@@ -16,9 +16,9 @@ export default function copyButtonPlugin(md: MarkdownIt) {
 
         const langClass = lang ? `language-${lang}` : "";
 
-        let langText = `<p style="margin: 0">${lang}</p>`
+        let langText = `<p style="margin: 0">${lang}</p>`;
         if (!lang) {
-            langText = ''
+            langText = '';
         }
 
         return `

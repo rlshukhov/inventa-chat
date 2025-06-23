@@ -1,4 +1,5 @@
 {
+  "user": "Пользователь",
   "new_dialogue": "Новый диалог {n}",
   "no_dialogue_selected": "Нет выбранного диалога.",
   "bot_typing": "...",
