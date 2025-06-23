@@ -384,8 +384,8 @@ const isSidebarOpenMobile = ref(false);
 </script>
 
 <template>
-  <div class="p-safe w-screen h-screen max-w-screen max-h-screen">
-    <SidebarContent>
+  <div class="p-safe full">
+    <SidebarContent class="full">
       <SidebarProvider :open="isSidebarOpen" :open-mobile="isSidebarOpenMobile" @update:openMobile="(v) => isSidebarOpenMobile = v">
         <DialogueSidebar
             :dialogues="dialogues"
@@ -396,9 +396,9 @@ const isSidebarOpenMobile = ref(false);
             @rename="openRenameModal"
             @delete-all="openDeleteDialogs"
         />
-        <main class="h-full w-full max-w-full max-h-full transition-max-w" :class="{'md:max-w-[calc(100vw-var(--sidebar-width))]': isSidebarOpen}">
+        <main class="transition-max-w w-full h-full min-h-full max-h-full" :class="{'!md:max-w-[calc(100vw-var(--sidebar-width))]': isSidebarOpen}">
           <!-- Main content -->
-          <div class="flex flex-col w-full h-screen max-h-screen">
+          <div class="flex flex-col h-full min-h-full max-h-full">
 
             <!-- Heading and settings button for large screens -->
             <div class="titlebar px-2 flex items-center justify-between border-b translucent-border pb-2">
@@ -426,9 +426,9 @@ const isSidebarOpenMobile = ref(false);
               {{ t('no_dialogue_selected') }}
             </p>
 
-            <div class="flex flex-col border-t translucent-border mb-2">
+            <div v-if="selectedDialogue" class="flex flex-col border-t translucent-border mb-2">
               <div class="w-full overflow-auto no-scrollbar">
-                <div v-if="selectedDialogue" class="flex flex-row gap-1 text-sm py-1 px-2">
+                <div  class="flex flex-row gap-1 text-sm py-1 px-2">
                   <p>{{ t('model') }}:</p>
 
                   <DropdownMenu>
@@ -469,7 +469,7 @@ const isSidebarOpenMobile = ref(false);
               </div>
 
               <!-- Input and send button -->
-              <div v-if="selectedDialogue" class="flex items-end">
+              <div class="flex items-end">
               <Textarea
                   v-model="input"
                   ref="textareaRef"
