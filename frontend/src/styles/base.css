@@ -211,12 +211,6 @@ html, body, #app, .full {
   }
 }
 
-.transition-max-w {
-  transition-property: max-width;
-  transition-duration: 200ms;
-  transition-timing-function: linear;
-}
-
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -226,3 +220,6 @@ html, body, #app, .full {
   scrollbar-width: none;  /* Firefox */
 }
 
+.without-sidebar {
+  max-width: calc(100vw - 16rem) !important; /* @see @/components/ui/sidebar/utils.ts */
+}

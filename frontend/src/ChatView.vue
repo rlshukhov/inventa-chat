@@ -386,7 +386,8 @@ const isSidebarOpenMobile = ref(false);
 <template>
   <div class="p-safe full">
     <SidebarContent class="full">
-      <SidebarProvider :open="isSidebarOpen" :open-mobile="isSidebarOpenMobile" @update:openMobile="(v) => isSidebarOpenMobile = v">
+      <SidebarProvider :open="isSidebarOpen" :open-mobile="isSidebarOpenMobile"
+                       @update:openMobile="(v) => isSidebarOpenMobile = v">
         <DialogueSidebar
             :dialogues="dialogues"
             :selectedId="selectedDialogue?.id || null"
@@ -396,7 +397,8 @@ const isSidebarOpenMobile = ref(false);
             @rename="openRenameModal"
             @delete-all="openDeleteDialogs"
         />
-        <main class="transition-max-w w-full h-full min-h-full max-h-full" :class="{'!md:max-w-[calc(100vw-var(--sidebar-width))]': isSidebarOpen}">
+        <main class="w-full h-full min-h-full max-h-full"
+              :class="{'without-sidebar': isSidebarOpen && !isMobile}">
           <!-- Main content -->
           <div class="flex flex-col h-full min-h-full max-h-full">
 
@@ -405,7 +407,8 @@ const isSidebarOpenMobile = ref(false);
               <Button class="hidden md:flex" variant="link" size="icon" @click="isSidebarOpen=!isSidebarOpen">
                 <PanelLeft class="w-5 h-5"/>
               </Button>
-              <Button class="flex md:hidden" variant="link" size="icon" @click="isSidebarOpenMobile=!isSidebarOpenMobile">
+              <Button class="flex md:hidden" variant="link" size="icon"
+                      @click="isSidebarOpenMobile=!isSidebarOpenMobile">
                 <PanelLeft class="w-5 h-5"/>
               </Button>
               <p class="text-lg font-semibold flex-1 px-2">
@@ -428,7 +431,7 @@ const isSidebarOpenMobile = ref(false);
 
             <div v-if="selectedDialogue" class="flex flex-col border-t translucent-border mb-2">
               <div class="w-full overflow-auto no-scrollbar">
-                <div  class="flex flex-row gap-1 text-sm py-1 px-2">
+                <div class="flex flex-row gap-1 text-sm py-1 px-2">
                   <p>{{ t('model') }}:</p>
 
                   <DropdownMenu>
