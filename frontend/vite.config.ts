@@ -18,12 +18,14 @@ export default defineConfig({
                 name: 'Inventa Chat',
                 short_name: 'Inventa',
                 description: 'Cross-platform OpenAI API compatible chat application',
-                theme_color: '#FFFFFF',
+                background_color: '#000000',
+                theme_color: '#000000',
                 icons: [
                     {
                         src: 'icon-256x256.png',
                         sizes: '256x256',
                         type: 'image/png',
+                        purpose: 'any maskable',
                     },
                 ],
             },
