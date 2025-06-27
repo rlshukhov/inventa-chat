@@ -429,88 +429,76 @@ const isSidebarOpenMobile = ref(false);
               {{ t('no_dialogue_selected') }}
             </p>
 
-            <div v-if="selectedDialogue" class="flex flex-col border-t translucent-border mb-2 mb-safe z-1 shadow-[0_-10px_15px_-3px_rgb(0_0_0_/_0.1),0_-4px_6px_-4px_rgb(0_0_0_/_0.1)]">
-              <div class="w-full overflow-auto no-scrollbar">
-                <div class="flex flex-row gap-1 text-sm py-1 px-2">
-                  <p>{{ t('model') }}:</p>
+            <div v-if="selectedDialogue"
+                 class="flex flex-row border-t translucent-border mb-2 mb-safe z-1 shadow-[0_-10px_15px_-3px_rgb(0_0_0_/_0.1),0_-4px_6px_-4px_rgb(0_0_0_/_0.1)]">
+              <div class="flex flex-col w-full">
+                <div class="w-full overflow-auto no-scrollbar">
+                  <div class="flex flex-row gap-1 text-sm py-1 px-2">
+                    <p>{{ t('model') }}:</p>
 
-                  <DropdownMenu>
-                    <DropdownMenuTrigger as-child>
-                      <Button variant="ghost" class="px-1 py-0 h-auto">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger as-child>
+                        <Button variant="ghost" class="px-1 py-0 h-auto">
                     <span class="underline decoration-dotted">
                       {{ selectedModel?.title || t('select_model') }}
                     </span>
-                      </Button>
-                    </DropdownMenuTrigger>
+                        </Button>
+                      </DropdownMenuTrigger>
 
-                    <DropdownMenuContent class="w-48">
-                      <DropdownMenuLabel>{{ t('select_model') }}</DropdownMenuLabel>
-                      <DropdownMenuSeparator/>
-                      <DropdownMenuSub
-                          v-for="provider in filteredProviders"
-                          :key="provider.id"
-                      >
-                        <DropdownMenuSubTrigger>
-                          {{ provider.title }}
-                        </DropdownMenuSubTrigger>
+                      <DropdownMenuContent class="w-48">
+                        <DropdownMenuLabel>{{ t('select_model') }}</DropdownMenuLabel>
+                        <DropdownMenuSeparator/>
+                        <DropdownMenuSub
+                            v-for="provider in filteredProviders"
+                            :key="provider.id"
+                        >
+                          <DropdownMenuSubTrigger>
+                            {{ provider.title }}
+                          </DropdownMenuSubTrigger>
 
-                        <DropdownMenuPortal>
-                          <DropdownMenuSubContent>
-                            <DropdownMenuItem
-                                v-for="model in getModelsByProvider(provider.id)"
-                                :key="model.id"
-                                @click="selectedModel=model"
-                            >
-                              {{ model.id }}
-                            </DropdownMenuItem>
-                          </DropdownMenuSubContent>
-                        </DropdownMenuPortal>
-                      </DropdownMenuSub>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                          <DropdownMenuPortal>
+                            <DropdownMenuSubContent>
+                              <DropdownMenuItem
+                                  v-for="model in getModelsByProvider(provider.id)"
+                                  :key="model.id"
+                                  @click="selectedModel=model"
+                              >
+                                {{ model.id }}
+                              </DropdownMenuItem>
+                            </DropdownMenuSubContent>
+                          </DropdownMenuPortal>
+                        </DropdownMenuSub>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
+
+                <Textarea
+                    v-model="input"
+                    ref="textareaRef"
+                    :placeholder="t('enter_message')"
+                    class="flex-1 focus:outline-none min-h-[4rem] resize-none"
+                    :disabled="isAwaiting"
+                    @keydown.enter.exact.prevent="handleEnter"
+                />
               </div>
 
-              <!-- Input and send button -->
-              <div class="flex items-end">
-              <Textarea
-                  v-model="input"
-                  ref="textareaRef"
-                  :placeholder="t('enter_message')"
-                  class="flex-1 focus:outline-none min-h-[4rem] resize-none"
-                  :disabled="isAwaiting"
-                  @keydown.enter.exact.prevent="handleEnter"
-              />
+              <Button
+                  v-if="!isAwaiting"
+                  :disabled="input.length === 0"
+                  @click="handleEnter"
+                  class="flex items-center justify-center h-full mr-2"
+                  variant="link">
+                <Send class="!w-5 !h-5"/>
+              </Button>
+              <Button
+                  v-if="isAwaiting"
+                  @click="stopGeneration"
+                  class="flex items-center justify-center h-full mr-2"
+                  variant="link">
+                <X color="red" class="!w-5 !h-5"></X>
+              </Button>
 
-                <!-- Buttons -->
-                <!--              <div v-if="editingLastUserMessage">-->
-                <!--                <Button :disabled="input.length === 0"-->
-                <!--                        @click="confirmEditAndRegenerate"-->
-                <!--                        variant="ghost">-->
-                <!--                  <Send/>-->
-                <!--                </Button>-->
-                <!--                <Button @click="cancelEditing" variant="ghost">-->
-                <!--                  <X/>-->
-                <!--                </Button>-->
-                <!--              </div>-->
-
-                <Button
-                    v-if="!isAwaiting"
-                    :disabled="input.length === 0"
-                    @click="handleEnter"
-                    class="flex items-center justify-center h-full mr-2"
-                    variant="ghost">
-                  <Send class="!w-5 !h-5"/>
-                </Button>
-
-                <Button
-                    v-if="isAwaiting"
-                    @click="stopGeneration"
-                    class="flex items-center justify-center h-full mr-2"
-                    variant="ghost">
-                  <X color="red" class="!w-5 !h-5"></X>
-                </Button>
-              </div>
             </div>
           </div>
         </main>
