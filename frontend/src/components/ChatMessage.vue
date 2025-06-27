@@ -102,7 +102,7 @@ watch(() => props.isTyping, () => {
 
 <template>
   <div
-      class="w-full my-2 group flex max-w-[1000px]"
+      class="w-full my-2 group flex max-w-[1000px] overflow-hidden overscroll-none"
       :class="props.role === 'user' ? 'flex-row-reverse' : 'flex-row'">
     <div
         class="p-3 rounded-2xl max-w-full"

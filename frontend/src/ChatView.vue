@@ -403,7 +403,7 @@ const isSidebarOpenMobile = ref(false);
           <div class="flex flex-col h-full min-h-full max-h-full">
 
             <!-- Heading and settings button for large screens -->
-            <div class="titlebar px-2 flex items-center justify-between border-b translucent-border pb-2">
+            <div class="titlebar px-2 flex items-center justify-between border-b translucent-border pb-2 shadow-lg z-1">
               <Button class="hidden md:flex" variant="link" size="icon" @click="isSidebarOpen=!isSidebarOpen">
                 <PanelLeft class="w-5 h-5"/>
               </Button>
@@ -429,7 +429,7 @@ const isSidebarOpenMobile = ref(false);
               {{ t('no_dialogue_selected') }}
             </p>
 
-            <div v-if="selectedDialogue" class="flex flex-col border-t translucent-border mb-2 mb-safe">
+            <div v-if="selectedDialogue" class="flex flex-col border-t translucent-border mb-2 mb-safe z-1 shadow-[0_-10px_15px_-3px_rgb(0_0_0_/_0.1),0_-4px_6px_-4px_rgb(0_0_0_/_0.1)]">
               <div class="w-full overflow-auto no-scrollbar">
                 <div class="flex flex-row gap-1 text-sm py-1 px-2">
                   <p>{{ t('model') }}:</p>
