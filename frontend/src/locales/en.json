@@ -39,5 +39,6 @@
   "fill_required_fields": "Please select a provider and a model.",
   "api_key_required": "API key is required.",
   "settings.invalid_api_key": "API key is invalid or expired.",
-  "settings.saving": "Saving..."
+  "settings.saving": "Saving...",
+  "settings.send_on_enter": "Send on Enter"
 }

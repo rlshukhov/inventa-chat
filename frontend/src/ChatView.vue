@@ -109,12 +109,13 @@ function scrollToBottom(force: boolean = true) {
   });
 }
 
-function handleEnter() {
-  // if (editingLastUserMessage.value) {
-  //   void confirmEditAndRegenerate();
-  // } else {
+function handleEnter(event: KeyboardEvent) {
+  if (!settings.sendOnEnter) {
+    return;
+  }
+
+  event.preventDefault();
   void sendMessage();
-  // }
 }
 
 function startEditingLastUserMessage() {
@@ -479,7 +480,7 @@ const isSidebarOpenMobile = ref(false);
                     :placeholder="t('enter_message')"
                     class="flex-1 focus:outline-none min-h-[4rem] resize-none"
                     :disabled="isAwaiting"
-                    @keydown.enter.exact.prevent="handleEnter"
+                    @keydown.enter.exact="(e: KeyboardEvent) => handleEnter(e)"
                 />
               </div>
 

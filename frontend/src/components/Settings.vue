@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {ref, computed, reactive, onMounted} from 'vue';
+import {ref, computed, reactive, onMounted, watch} from 'vue';
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -16,6 +16,7 @@ import {eventBus} from "@/eventBus.ts";
 import {Provider, type ProviderID, providerIds, providers} from "@/models/ai/providers.ts";
 import {settings} from "@/lib/services/settings.ts";
 import type {Language} from "@/models/settings.ts";
+import {Switch} from "@/components/ui/switch";
 
 const {t, locale} = useI18n();
 const open = defineModel<boolean>('open');
@@ -90,6 +91,8 @@ onMounted(async () => {
     locale.value = savedLocale;
   }
 
+  sendOnEnter.value = settings.sendOnEnter;
+
   for (const provider of providers) {
     apiKeys[provider.id] = await provider.storage.get('bearer-token') || '';
   }
@@ -99,6 +102,15 @@ async function toggleLocale() {
   locale.value = locale.value === 'en' ? 'ru' : 'en';
   await settings.setLocale(locale.value as Language);
 }
+
+const sendOnEnter = ref(settings.sendOnEnter);
+watch(sendOnEnter, ((value: boolean) => {
+  if (value === settings.sendOnEnter) {
+    return;
+  }
+
+  void settings.setSendOnEnter(value);
+}));
 </script>
 
 <template>
@@ -133,6 +145,11 @@ async function toggleLocale() {
           <Globe class="w-4 h-4"/>
           {{ locale === 'en' ? 'Русский' : 'English' }}
         </Button>
+
+        <div class="flex items-center space-x-2">
+          <Switch id="send-on-enter" :model-value="sendOnEnter" @update:model-value="sendOnEnter=!sendOnEnter"/>
+          <Label for="send-on-enter">{{t('settings.send_on_enter')}}</Label>
+        </div>
 
         <p v-if="errorMessage" class="text-red-500 text-sm">
           {{ errorMessage }}

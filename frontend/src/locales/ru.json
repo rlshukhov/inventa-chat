@@ -40,6 +40,6 @@
   "fill_required_fields": "Пожалуйста, выберите провайдера и модель.",
   "api_key_required": "Требуется API-ключ.",
   "settings.invalid_api_key": "API ключ недействителен или истёк.",
-  "settings.saving": "Сохранение..."
-
+  "settings.saving": "Сохранение...",
+  "settings.send_on_enter": "Отправлять при нажатии Enter"
 }

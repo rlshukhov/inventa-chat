@@ -2,14 +2,14 @@ import {KeyValueDatabase} from "@/lib/database.ts";
 import type {Language, SettingsDefinition} from "@/models/settings.ts";
 import {eventBus} from "@/eventBus.ts";
 
-type SettingsStorageKeys = 'locale' | 'last_used_model_uid';
+type SettingsStorageKeys = 'locale' | 'last_used_model_uid' | 'send_on_enter';
 
 class SettingsStorage extends KeyValueDatabase<string> {
     public constructor() {
         super('SettingsStorage');
 
         eventBus.on('aiModelUsed', (model) => {
-            this.set('last_used_model_uid', model.uid).catch(console.error);
+            void settings.setLastUsedModelUid(model.uid);
         });
     }
 
@@ -25,6 +25,7 @@ class SettingsStorage extends KeyValueDatabase<string> {
 export class Settings implements SettingsDefinition {
     public locale: Language = 'ru';
     public lastUsedModelUid?: string;
+    public sendOnEnter: boolean = false;
 
     private storage: SettingsStorage;
 
@@ -45,6 +46,9 @@ export class Settings implements SettingsDefinition {
         if (lastUsedModelUid) {
             this.lastUsedModelUid = lastUsedModelUid;
         }
+
+        const sendOnEnter = await this.storage.get('send_on_enter');
+        this.sendOnEnter = sendOnEnter === 'true';
     };
 
     public async setLocale(locale: Language): Promise<void> {
@@ -55,6 +59,11 @@ export class Settings implements SettingsDefinition {
     public async setLastUsedModelUid(uid: string): Promise<void> {
         this.lastUsedModelUid = uid;
         await this.storage.set('last_used_model_uid', uid);
+    }
+
+    public async setSendOnEnter(sendOnEnter: boolean): Promise<void> {
+        this.sendOnEnter = sendOnEnter;
+        await this.storage.set('send_on_enter', sendOnEnter.toString());
     }
 }
 
